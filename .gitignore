@@ -1,0 +1,17 @@
+# wl-15-03-2018: 
+
+## Folders to be ignored (only for galaxy tool)
+doc/
+code/
+res/
+
+## R Session Data files
+.RData
+.Rhistory
+.Rapp.history
+
+## Others
+.DS_Store
+*.swp
+*.*~
+
