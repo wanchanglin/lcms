@@ -1,38 +1,21 @@
 ###### Z.Hall, Aug 2014 #####
-## wl-12-03-2018, Mon: 
+## wl-12-03-2018, Mon: commence 
+## wl-15-03-2018, Thu: tidy R codes
 
-########### Script to process lcms data using xcms ############
-
-spectra_dir     <- "C:/Users/hallz/Documents/Processing_temp/" # where your mzML files are stored
-lib_dir         <- "O:/Groups/LPS/BioComputing/lcms_processing/libraries" # the folder where your library files are stored
-
-FWHM            <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
-snthresh        <- 5 # set the signal to noise threshold
-minfrac         <- 0.25 # minimum fraction of samples necessary for it to be a valid peak group
-profmethod      <- "binlin"  # use either "bin" (better for centroid, default), "binlin" (better for profile)
-
-adducts         <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F) # choose which adduct you want to include in library search
-ppm.annotate    <- 15   # choose ppm for annotations
-ionisation_mode <- "positive"  # either "positive" or "negative" - determines which classes of lipids to search for
-
-source("O:/Groups/LPS/BioComputing/lcms_processing/lcms.R") # source your R script
-
-
-
-############ Script to process lcms data using xcms #####################################################################
-### Functions for making lipid library, deisotoping and annotating were from Image Scope (Nick Bond) and modified for use
-### with lcms data #####
-############ Z.Hall, Oct 2014###########################################################################################
-
-## setting up  ##
 library(xcms)
 library(reshape2)
 
-##################################### Make lipid library ################################################################
-makelibrary <-function(sel.class, fixed=F, fixed_FA, lookup_lipid_class,lookup_FA, lookup_element){
+############ Script to process lcms data using xcms #################
+### Functions for making lipid library, deisotoping and annotating were from
+### Image Scope (Nick Bond) and modified for use with lcms data #####
+############ Z.Hall, Oct 2014 #########################################
+
+############################# Make lipid library #######################
+makelibrary <- function(sel.class, fixed=F, fixed_FA, lookup_lipid_class,
+                        lookup_FA, lookup_element){
+
   print("Making library of lipid masses...")
   lookup_lipid_class <- cbind(lookup_lipid_class, sel.class)
-
 
   library<- numeric()
   for(i in 1:nrow(lookup_lipid_class)){
@@ -41,7 +24,6 @@ makelibrary <-function(sel.class, fixed=F, fixed_FA, lookup_lipid_class,lookup_F
       rounder = 3 # number of decimals the rounded masses are rounded to.
       ## lipidclass = "TG"
       lipidclass <- row.names(lookup_lipid_class[i,])
-
 
       ##determine how many FAs places to be used for combination and generate combination of FAs
       FA_number <- as.numeric(lookup_lipid_class[lipidclass,"FA_number"])
@@ -141,10 +123,9 @@ makelibrary <-function(sel.class, fixed=F, fixed_FA, lookup_lipid_class,lookup_F
   return(library)
 }
 
-################################################  Deisotoping ###################################################################
-deisotoping <- function(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, spectra=spectra){
-
-
+########################  Deisotoping #################################
+deisotoping <- function(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
+                        spectra=spectra){
 
   C13_1 <- 1.003355
   C13_2 <- C13_1*2
@@ -159,7 +140,6 @@ deisotoping <- function(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, spectra=sp
     intensity <- as.numeric(spectra[i,2])
     ## calculated values
     offset = (ppm * mass) / 1000000
-
 
     ## find isotope with ppm filter on isotpe
     search <- round((mass+C13_1),digits = 3)
@@ -206,18 +186,22 @@ deisotoping <- function(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, spectra=sp
   return(deisotoped)
 }
 
-################################################# Annotating ######################################################################
-annotating<-function(deisotoped,adducts=c(H=T, NH4=F, Na=T, K=F, dH=F, Cl=F, OAc=F),ppm.annotate=10, dbase){
+############################# Annotating ##############################
+annotating <- function(deisotoped,
+                       adducts=c(H=T, NH4=F, Na=T, K=F, dH=F, Cl=F, OAc=F),
+                       ppm.annotate=10, dbase){
   print("Starting annotation")
-  d.finalmz <-as.vector(deisotoped$mz.obs)
-  s1<-dbase
-  spectra<-cbind(round(as.numeric(d.finalmz), digits=3),d.finalmz)
-  combined <- vector()
-  sel.adducts<- vector()
-  index<- 13 # offset to search only rounded masses in library
+  d.finalmz   <- as.vector(deisotoped$mz.obs)
+  s1          <- dbase
+  spectra     <- cbind(round(as.numeric(d.finalmz), digits=3),d.finalmz)
+  combined    <- vector()
+  sel.adducts <- vector()
+  index       <- 13 # offset to search only rounded masses in library
+
   for(a in 1:length(adducts)){
     if(adducts[a]==T) sel.adducts<- c(sel.adducts, index+a)
   }
+
   for(i in 1:nrow(spectra)){
     search<-as.numeric(spectra[i,1])
     offset = (ppm.annotate * search) / 1000000
@@ -263,7 +247,6 @@ annotating<-function(deisotoped,adducts=c(H=T, NH4=F, Na=T, K=F, dH=F, Cl=F, OAc
       }
     }
 
-
     summary <- paste(length(annotations[annotations[,2] !="",2]),"from",length(as.vector(deisotoped$mz.obs)),"monoisotopic peaks were annoated (using accuract mass) with a",ppm.annotate,"ppm tollerance", sep=" "); log<-c(log,summary)
     print(summary)
 
@@ -272,19 +255,48 @@ annotating<-function(deisotoped,adducts=c(H=T, NH4=F, Na=T, K=F, dH=F, Cl=F, OAc
 }
 
 ## ======================================================================== 
+## parameter setting
+
+spectra_dir     <- "C:/Users/hallz/Documents/Processing_temp/" # where your mzML files are stored
+lib_dir         <- "O:/Groups/LPS/BioComputing/lcms_processing/libraries" # the folder where your library files are stored
+
+FWHM            <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
+snthresh        <- 5 # set the signal to noise threshold
+minfrac         <- 0.25 # minimum fraction of samples necessary for it to be a valid peak group
+profmethod      <- "binlin"  # use either "bin" (better for centroid, default), "binlin" (better for profile)
+
+adducts         <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F) # choose which adduct you want to include in library search
+ppm.annotate    <- 15   # choose ppm for annotations
+ionisation_mode <- "positive"  # either "positive" or "negative" - determines which classes of lipids to search for
+
+## ======================================================================== 
 ## Read in library files
 setwd(lib_dir)
 
-read <- read.csv('lib_FA.csv', sep=",", header=T);lookup_FA <- read[,2:4]; row.names(lookup_FA) <- read[,1]
-read <- read.csv('lib_class.csv', sep=",", headeq=T);lookup_lipid_class <- read[,2:3]; row.names(lookup_lipid_class) <- read[,1]
-read <- read.csv('lib_element.csv', sep=",", header=T);lookup_element <- read[,2:3]; row.names(lookup_element) <- read[,1]
-read <- read.csv('lib_modification.csv', sep=",", header=T);lookup_mod <- read[,2:ncol(read)]; row.names(lookup_mod ) <- read[,1]
+read                 <- read.csv('lib_FA.csv', sep=",", header=T)
+lookup_FA            <- read[,2:4]
+row.names(lookup_FA) <- read[,1]
 
-FA_expt <-list('10','12','14','15','16','16.1','17','17.1','18','18.1','18.2','18.3','20.3','20.4','20.5','21','22','22.5','22.6','24.1')
-##fatty acids to be included in library
+read                          <- read.csv('lib_class.csv', sep=",", headeq=T)
+lookup_lipid_class            <- read[,2:3]
+row.names(lookup_lipid_class) <- read[,1]
+
+read                      <- read.csv('lib_element.csv', sep=",", header=T)
+lookup_element            <- read[,2:3]
+row.names(lookup_element) <- read[,1]
+
+read                   <- read.csv('lib_modification.csv', sep=",", header=T)
+lookup_mod             <- read[,2:ncol(read)]
+row.names(lookup_mod ) <- read[,1]
+
+FA_expt <- list('10','12','14','15','16','16.1','17','17.1','18','18.1',
+                '18.2','18.3','20.3','20.4','20.5','21','22','22.5',
+                '22.6','24.1')
+
+## fatty acids to be included in library
 
 if (ionisation_mode == "positive"){
-  sel.class<- c( ## lipid classes to include - will need to change for negative ion mode
+  sel.class <- c( ## lipid classes to include - will need to change for negative ion mode
       T, #TG
       T, #DG
       T, #PC
@@ -305,8 +317,8 @@ if (ionisation_mode == "positive"){
   )
 }
 
-if (ionisation_mode =="negative"){
-  sel.class<- c( ## lipid classes to include - will need to change for negative ion mode
+if (ionisation_mode == "negative"){
+  sel.class <- c( ## lipid classes to include - will need to change for negative ion mode
       F, #TG
       F, #DG
       T, #PC
@@ -330,23 +342,17 @@ if (ionisation_mode =="negative"){
 dbase <- makelibrary(sel.class, fixed=F, fixed_FA, lookup_lipid_class, 
                      lookup_FA, lookup_element)
 
+## wl-15-03-2018, 周四: 'fixed-FA' will be one of 'FA_expt'.
+
 ## ======================================================================== 
 ## XCMS
 
 ## place converted mzML files in working directory
 setwd(spectra_dir)
-path <- paste(getwd())
-
-######   use this if you want to look at all files in directory          #########
+path  <- paste(getwd())
 files <- list.files(path, recursive=T, full.names=F, pattern=".mzML")
 
-######    use this if you want to exclude files using an exlcusion list     ######
-##  list_1 <- list.files(path, recursive=T, full.names=F, pattern=".mzML")
-##  csv <- read.csv("exclusion_list.csv", header=F)
-##  list_2 <- (as.vector(as.character(csv[1:nrow(csv),1])))
-##  list_3 <- list_1[- which(list_1 %in% list_2)]
-##  files <- list_3
-
+## ------------------------------------------------------------------------ 
 ## xcms scripts for peak picking and integration
 xset <- xcmsSet(files, method="matchedFilter", step = 0.1, sigma=FWHM/2.3548, 
                 snthresh=snthresh, profmethod=profmethod) 
@@ -360,6 +366,9 @@ xset <- group(xset) # groups peaks, temporarily
 xset2 <- retcor(xset, method="obiwarp", profStep=0.1, plottype="deviation")  
 ## different method for retention time correction - more robust but slower
 
+xset2 <- group(xset2, bw = 5,  minfrac = minfrac, mzwid = 0.025) 
+## groups data based on corrected retention times
+
 ## ------------------------------------------------------------------------ 
 ## check for retention time outliers and exclude samples if necessary
 rmsd <- sapply(1:length(xset2@rt$corrected), function(x) {
@@ -370,17 +379,16 @@ plot(rmsd)
 rmsd <- cbind(files, rmsd)
 write.csv(rmsd, "RT_rmsd.csv")
 
-## ------------------------------------------------------------------------ 
-xset2 <- group(xset2, bw = 5,  minfrac = minfrac, mzwid = 0.025) # groups data based on corrected retention times
-
 ## make output based on unique peak groups (mz and RT groups)
-names <- groupnames(xset2, rtdec=2, mzdec=4)  # define decimal places for mz and RT values
+names <- groupnames(xset2, rtdec=2, mzdec=4)  
+## define decimal places for mz and RT values
 names <- substr(names, 2, 18)
 
-out <- groupval(xset2, method="maxint", value="maxo", intensity="maxo") # if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
+out <- groupval(xset2, method="maxint", value="maxo", intensity="maxo") 
+## if multiple peaks choose one with highest intensity based on maxo (peak
+## hieght raw)
 rownames(out) <- names
 out[is.na(out)] <- 0 # replace NAs with 0
-
 write.csv(out, "xcms_peak_height_raw.csv")
 
 out <- groupval(xset2, method="maxint", value="into", intensity="maxo")
@@ -392,7 +400,9 @@ write.csv(out, "xcms_peak_area_raw.csv")
 ## deisotoping - working with raw peak area - can also change "out" to use
 ## for peak height or the fitered results (value = into/intf/maxo/maxf)
 
-out <- groupval(xset2, method="maxint", value="into", intensity="maxo") # if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
+out <- groupval(xset2, method="maxint", value="into", intensity="maxo") 
+## if multiple peaks choose one with highest intensity based on maxo (peak
+## hieght raw)
 rownames(out) <- names
 out[is.na(out)] <- 0 # replace NAs with 0
 names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
@@ -401,14 +411,16 @@ spectra <- cbind(names_split$mz, out[,1], "", "")
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
 
 ## -------------------------------------------------------------------- 
-deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, spectra=spectra)
+deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
+                          spectra=spectra)
 
 indices <- match(rownames(deisotoped), rownames(out))
 deisotoped_out <- out[indices, ]
 
 names_deiso <- rownames(deisotoped_out)
 names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, deisotoped_out[,1:ncol(deisotoped_out)])
+deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, 
+                        deisotoped_out[,1:ncol(deisotoped_out)])
 
 write.csv(deisotoped_out, "xcms_peak_area_raw_deisotoped.csv")
 
@@ -419,7 +431,7 @@ final_out <- cbind(annotated, deisotoped_out)
 write.csv(final_out, "final_annotated_desiotoped.csv")
 
 ## =======================================================================
-## normalising based on TIC
+f# normalising based on TIC
 data <- read.csv("final_annotated_desiotoped.csv")
 rownames(data) <- data[,1]
 sums <- as.vector(colSums(data[,5:ncol(data)], na.rm=T))
@@ -430,14 +442,14 @@ write.csv(TIC_normalised, "final_annotated_deisotoped_norm.csv")
 
 ##hist(factor, breaks=100)
 
+#########################################################################
 ## =======================================================================
 ## fill in missing peaks by integrating noise
 xset3 <- fillPeaks(xset2) # fills in missing peaks
-
-names <- groupnames(xset3, rtdec=2, mzdec=4)  # define decimal places for mz and RT values
+names <- groupnames(xset3, rtdec=2, mzdec=4)  
+## define decimal places for mz and RT values
 names <- substr(names, 2, 18)
 
-## =======================================================================
 ## =======================================================================
 ## deisotope
 out <- groupval(xset3, method="maxint", value="into", intensity="maxo") # if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
@@ -447,21 +459,22 @@ names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
 spectra <- cbind(names_split$mz, out[,1], "", "")
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
 
-## -------------------------------------------------------------------- 
-deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, spectra=spectra)
+deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
+                          spectra=spectra)
 
 indices <- match(rownames(deisotoped), rownames(out))
 deisotoped_out <- out[indices, ]
 
 names_deiso <- rownames(deisotoped_out)
 names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, deisotoped_out[,1:ncol(deisotoped_out)])
+deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, 
+                        deisotoped_out[,1:ncol(deisotoped_out)])
 
 write.csv(deisotoped_out, "xcms_fill_peak_area_raw_deisotoped.csv")
 
 ## =======================================================================
 ## annotate
-annotated <-annotating(deisotoped, adducts, ppm.annotate, dbase)
+annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 final_out <- cbind(annotated, deisotoped_out)
 write.csv(final_out, "final_annotated_desiotoped_fill.csv")
 
@@ -477,12 +490,13 @@ write.csv(TIC_normalised, "final_annotated_deisotoped_fill_norm.csv")
 
 ##hist(factor, breaks=100)
 
-###############################################################################################################################
+##########################################################################
 
-## plot extracted ion chromatograms for each peak group (corrected RT) if desired, can choose specific samples and/or mz
+## plot extracted ion chromatograms for each peak group (corrected RT) if
+## desired, can choose specific samples and/or mz
 
-##xic.corr <- getEIC(xset3, rt = "corrected", groupidx = 1:nrow(xset3@groups))
-##plot(xic.corr, xset3, groupidx=1:nrow(xset3@groups), sampleidx=1:length(files))
+## xic.corr <- getEIC(xset3, rt = "corrected", groupidx = 1:nrow(xset3@groups))
+## plot(xic.corr, xset3, groupidx=1:nrow(xset3@groups), sampleidx=1:length(files))
 
 
 ################################################################################################################################

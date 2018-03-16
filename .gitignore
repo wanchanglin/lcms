@@ -4,6 +4,7 @@
 doc/
 code/
 res/
+test-data/
 
 ## R Session Data files
 .RData
