@@ -1,78 +1,79 @@
 ## wl-12-03-2018, Mon: apply xcms for -LC-MS 
+## wl-19-03-2018, Mon: Use Zoe's parameters seeting for 'xcms'
 ## to-do
 ##  1.) Is is neccesary to use 'fillPeaks'?
 ##  2.) other usages
 
 library(xcms)
-## library(faahKO)
-library(CAMERA)
 
 FWHM       <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
 snthresh   <- 5 # set the signal to noise threshold
 minfrac    <- 0.25 # minimum fraction of samples necessary for it to be a valid peak group
 profmethod <- "binlin"  # use either "bin" (better for centroid, default), "binlin" (better for profile)
 
-path <- "C:/R_lwc/20180309_EC_SM_AM12_PartIV/mzML"
+## path <- "C:/R_lwc/20180309_EC_SM_AM12_PartIV/mzML"
+path <- "C:/R_lwc/data/20180309_EC_SM_AM12_PartIV/mzML"
 files <- list.files(path, pattern="mzML",recursive = F, full.names = TRUE)
 
 ## ========================================================================
 ## Run xcms
 if (F){
   mt:::tic()
-  xset <- xcmsSet(files, method="matchedFilter", step = 0.1,
+  xset <- xcmsSet(files, method="matchedFilter", step = 0.1, 
                   sigma=FWHM/2.3548, snthresh=snthresh, 
                   profmethod=profmethod)
 
   xset <- group(xset) ## slotNames(xset)
 
-  ## wl-15-03-2018, Thu: Possible memory problem?
+  ## wl-15-03-2018, Thu: Possible memqry problem?
   xset <- retcor(xset, method="obiwarp", profStep=0.1, plottype="deviation") 
 
   xset <- group(xset, bw = 5,  minfrac = minfrac, mzwid = 0.025) 
   ## lwc-05-11-2013: group has three emthods: group.density (default), 
   ##  group.mzClust and group.nearest.
 
-  ## xset <- fillPeaks(xset) 
+  xset <- fillPeaks(xset) 
   ## Note: need mzML files to fill in missing peaks
 
-  mt:::toc() ## wl-12-03-2018, Mon: 15 minutes
+  mt:::toc() ## wl-12-03-2018, Mon: 20 minutes
 
   save(xset,file="./test-data/xset.RData")
 } else {
   load("./test-data/xset.RData")
 }
 
+
 ## ========================================================================
 ## lwc-08-10-2013: Get peak lists. 
-if (F){ ## No need for peaklist
-  peakmat <- xcms::peaks(xset)   
-  ## Note: there is also function 'peaks' from package mzR.
-  dim(peakmat)
-}
-
-grpmat             <- groups(xset)    ## is object@groups ##dim(grpmat)
-values             <- groupval(xset, method="medret", value="into")
-peaklist           <- cbind(grpmat, values)
+peakmat   <- xcms::peaks(xset)   ## Note: there is other 'peaks' in mzR.
+grpmat    <- groups(xset)    ## is object@groups ##dim(grpmat)
+## values <- groupval(xset, method="medret", value="into")
+values    <- groupval(xset, method="maxint", value="into", intensity="maxo")
+peaklist  <- cbind(grpmat, values)
+## tidy up names
 rownames(peaklist) <- NULL
+## wl-19-03-2018, Mon: refer to function CAMERA:::getPeaks_selection
+colnames(peaklist) <-  gsub("mzmed","mz",colnames(peaklist))
+colnames(peaklist) <-  gsub("rtmed","rt",colnames(peaklist))
+
 ## lwc-08-10-2013: 'groupval' arguments: 
 ## 'method': c("medret", "maxint")
 ## value': c("into","intb","maxo"). 
 
-write.csv(peaklist,file=paste(cdfpath,"/",'xcms_peak.csv',sep=""))
-
-nam <- groupnames(xset, rtdec=2, mzdec=4)  
-nam <- substr(nam, 2, 18)
-
+## ========================================================================
 ## ------------------------------------------------------------------ 
 ## or get peak list after annotation by CAMERA
 ## Note: need the original mzML files
+## library(CAMERA)
 ## xsa         <- annotate(xset, cor_eic_th=0)
-## peaklist.2  <- getPeaklist(xsa)
+## peaklist.1  <- getPeaklist(xsa)
 
 ## or get peak list directly from CAMERA's hidden function 
-## peaklist.1 <- CAMERA:::getPeaks_selection(xset)
+## peaklist.2 <- CAMERA:::getPeaks_selection(xset)
 
-## ==========================================================================
+## write.csv(peaklist,file=paste(cdfpath,"/",'xcms_peak.csv',sep=""))
+
+## ========================================================================
 ## Create complete feature table from CAMERA
 ## xs     - xcmsSet object
 ## method - groupval parameter method

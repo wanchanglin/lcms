@@ -335,14 +335,14 @@ if (ionisation_mode == "negative"){
       F, #CE
       T, #FFA
       F, #SM
-      F  #Cer
+      T  #Cer
   )
 }
 
 dbase <- makelibrary(sel.class, fixed=F, fixed_FA, lookup_lipid_class, 
                      lookup_FA, lookup_element)
 
-## wl-15-03-2018, 周四: 'fixed-FA' will be one of 'FA_expt'.
+## wl-15-03-2018: 'fixed-FA' will be one of 'FA_expt'.
 
 ## ======================================================================== 
 ## XCMS
@@ -452,7 +452,8 @@ names <- substr(names, 2, 18)
 
 ## =======================================================================
 ## deisotope
-out <- groupval(xset3, method="maxint", value="into", intensity="maxo") # if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
+out <- groupval(xset3, method="maxint", value="into", intensity="maxo") 
+## if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
 rownames(out) <- names
 names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
 
