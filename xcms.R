@@ -1,24 +1,25 @@
-## wl-12-03-2018, Mon: apply xcms for -LC-MS 
+f# wl-12-03-2018, Mon: apply xcms for LC-MS 
 ## wl-19-03-2018, Mon: Use Zoe's parameters seeting for 'xcms'
-## to-do
-##  1.) Is is neccesary to use 'fillPeaks'?
-##  2.) other usages
+## wl-20-03-2018, Tue: use 'peakTable' to get peak list
 
 library(xcms)
 
+## file path of mzML files
+path  <- "C:/R_lwc/data/20180309_EC_SM_AM12_PartIV/mzML"
+files <- list.files(path, pattern="mzML",recursive = F, full.names = TRUE)
+
+## parameters qor 'xcmsSet' (based on Zoe Hall's setting)
 FWHM       <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
 snthresh   <- 5 # set the signal to noise threshold
-minfrac    <- 0.25 # minimum fraction of samples necessary for it to be a valid peak group
-profmethod <- "binlin"  # use either "bin" (better for centroid, default), "binlin" (better for profile)
-
-## path <- "C:/R_lwc/20180309_EC_SM_AM12_PartIV/mzML"
-path <- "C:/R_lwc/data/20180309_EC_SM_AM12_PartIV/mzML"
-files <- list.files(path, pattern="mzML",recursive = F, full.names = TRUE)
+## minimum fraction of samples necessary for it to be a valid peak group
+minfrac    <- 0.25 
+## use either "bin" (better for centroid, default), "binlin" (better for
+## profile)
+profmethod <- "binlin"  
 
 ## ========================================================================
 ## Run xcms
-if (F){
-  mt:::tic()
+if (F) {
   xset <- xcmsSet(files, method="matchedFilter", step = 0.1, 
                   sigma=FWHM/2.3548, snthresh=snthresh, 
                   profmethod=profmethod)
@@ -35,30 +36,34 @@ if (F){
   xset <- fillPeaks(xset) 
   ## Note: need mzML files to fill in missing peaks
 
-  mt:::toc() ## wl-12-03-2018, Mon: 20 minutes
-
   save(xset,file="./test-data/xset.RData")
 } else {
   load("./test-data/xset.RData")
 }
 
-
 ## ========================================================================
 ## lwc-08-10-2013: Get peak lists. 
-peakmat   <- xcms::peaks(xset)   ## Note: there is other 'peaks' in mzR.
+peakmat   <- xcms::peaks(xset)   
+## Note: two arguments in 'groupval', 'value' and 'intensity' will use this
+## matrix's intensity columns
+
 grpmat    <- groups(xset)    ## is object@groups ##dim(grpmat)
 ## values <- groupval(xset, method="medret", value="into")
 values    <- groupval(xset, method="maxint", value="into", intensity="maxo")
-peaklist  <- cbind(grpmat, values)
-## tidy up names
-rownames(peaklist) <- NULL
-## wl-19-03-2018, Mon: refer to function CAMERA:::getPeaks_selection
+## values.1  <- groupval(xset, method="maxint", value="maxo", intensity="maxo")
+## wl-20-03-2018, Tue: it seems that only 'value' to decide the intensity to
+## be returned. For details, see source code of 'groupval'
+
+peaklist  <- data.frame(cbind(grpmat, values),row.names = NULL)
 colnames(peaklist) <-  gsub("mzmed","mz",colnames(peaklist))
 colnames(peaklist) <-  gsub("rtmed","rt",colnames(peaklist))
 
-## lwc-08-10-2013: 'groupval' arguments: 
-## 'method': c("medret", "maxint")
-## value': c("into","intb","maxo"). 
+## wl-20-03-2018, Tue: or use 'peakTable' directly.
+## peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
+
+## keep only mz and rt in peak list
+peaklist  <- subset(peaklist, select=-c(mzmin,mzmax,rtmin,rtmax,npeaks,mzML))
+
 
 ## ========================================================================
 ## ------------------------------------------------------------------ 
@@ -71,17 +76,57 @@ colnames(peaklist) <-  gsub("rtmed","rt",colnames(peaklist))
 ## or get peak list directly from CAMERA's hidden function 
 ## peaklist.2 <- CAMERA:::getPeaks_selection(xset)
 
-## write.csv(peaklist,file=paste(cdfpath,"/",'xcms_peak.csv',sep=""))
 
-## ========================================================================
+###########################################################################
+## xcms::peakTable
+## wl-20-03-2018, Tue: Note that the dot arguments sgould be 'groupval'
+## arguments.
+setMethod("peakTable", "xcmsSet", function(object, filebase = character(), ...) {
+
+    if (length(sampnames(object)) == 1) {
+        return(object@peaks)
+    }
+
+    if (nrow(object@groups) < 1) {
+        stop ('First argument must be an xcmsSet with group information or contain only one sample.')
+    }
+
+    groupmat <- groups(object)
+
+
+    if (! "value" %in% names(list(...))) {
+        ts <- data.frame(cbind(groupmat,groupval(object, value="into",  ...)), row.names = NULL)
+    } else {
+        ts <- data.frame(cbind(groupmat,groupval(object, ...)), row.names = NULL)
+    }
+
+    cnames <- colnames(ts)
+
+    if (cnames[1] == 'mzmed') {
+        cnames[1] <- 'mz'
+    } else {
+        stop ('mzmed column missing')
+    }
+    if (cnames[4] == 'rtmed') {
+        cnames[4] <- 'rt'
+    } else {
+        stop ('mzmed column missing')
+    }
+
+    colnames(ts) <- cnames
+
+    if (length(filebase))
+        write.table(ts, paste(filebase, ".tsv", sep = ""), quote = FALSE, 
+                    sep = "\t", col.names = NA)
+
+    ts
+})
+
+###########################################################################
 ## Create complete feature table from CAMERA
 ## xs     - xcmsSet object
 ## method - groupval parameter method
 ## value  - groupval parameter method
-## ------------------------------------------------------------------ 
-## wl-16-03-2018, Fri: need to change this function to allow more 
-## arguments passing.
-## ------------------------------------------------------------------ 
 getPeaks_selection <- function(xs, method="medret", value="into"){
   if (!class(xs) == "xcmsSet") {
     stop ("Parameter xs is no xcmsSet object\n")
