@@ -1,10 +1,17 @@
-###### Z.Hall, Aug 2014 #####
 ## wl-12-03-2018, Mon: commence 
 ## wl-15-03-2018, Thu: tidy R codes
+## wl-21-03-2018, Wed: major changes
+## To-Do
+##  1) modify deisotoping
+##  2) modify annotating
+##  3) modify makelibrary
+##  4) test and debug
 
 library(xcms)
 
-############################# Make lipid library #######################
+## ======================================================================== 
+## Functions for deisoteping and annotating
+
 ## wl-20-03-2018, Tue: take this function from 'massPix'
 makelibrary <- function(ionisation_mode, lookup_lipid_class,lookup_FA, 
                         lookup_element){
@@ -224,7 +231,6 @@ deisotoping <- function(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5,
   return(deisotoped)
 }
 
-############################# Annotating ##############################
 annotating <- function(deisotoped,
                        adducts=c(H=T, NH4=F, Na=T, K=F, dH=F, Cl=F, OAc=F),
                        ppm.annotate=10, dbase){
@@ -293,14 +299,18 @@ annotating <- function(deisotoped,
 }
 
 ## ======================================================================== 
-## Make library for annotation
+## settings
+
 home_dir        <- "C:/R_lwc/lcms/"         ## for windows
 lib_dir         <- paste0(home_dir,"libraries/")
-adducts         <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F) # choose which adduct you want to include in library search
+adducts         <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F) 
+## choose which adduct you want to include in library search
 ppm.annotate    <- 15   # choose ppm for annotations
-ionisation_mode <- "positive"  # either "positive" or "negative" - determines which classes of lipids to search for
+ionisation_mode <- "positive"  # either "positive" or "negative" 
 
-## ------------------------------------------------------------------------
+## ======================================================================== 
+## Make library for annotation
+
 ## read in library files
 read <- read.csv(paste(lib_dir,"lib_FA.csv",sep="/"), sep=",", header=T)
 lookup_FA <- read[,2:4]
@@ -322,106 +332,74 @@ dbase <- makelibrary(ionisation_mode, lookup_lipid_class,
                      lookup_FA, lookup_element)
 
 ## ======================================================================== 
-## XCMS
+## load XCMS data set
+
 load(paste0(home_dir,"test-data/xset.RData"))
 peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
 
-## =======================================================================
-## deisotoping - working with raw peak area - can also change "out" to use
-## for peak height or the fitered results (value = into/intf/maxo/maxf)
+## keep only mz and rt in peak list
+peaklist <- subset(peaklist, select=-c(mzmin,mzmax,rtmin,rtmax,npeaks,mzML))
+## round mz and rt
+peaklist <- transform(peaklist, mz=round(mz,4),rt=round(rt,2))
 
-spectra  <- peaklist[,c("mz","X1")]
+## =======================================================================
+## Deisotoping and Annotating
+
+## spectra  <- as.matrix(peaklist[,c("mz","X1")])
+spectra  <- as.matrix(peaklist[,c(1,3)])  ## mz and intensity of the 1st sample
 spectra  <- cbind(spectra,"","")
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
 
-deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
+## -------------------------------------------------------------------  
+deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5,
                           spectra=spectra)
-
-indices <- match(rownames(deisotoped), rownames(out))
-deisotoped_out <- out[indices, ]
-
-names_deiso <- rownames(deisotoped_out)
-names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, 
-                        deisotoped_out[,1:ncol(deisotoped_out)])
-
-write.csv(deisotoped_out, "xcms_peak_area_raw_deisotoped.csv")
+annotated  <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 
 ## =======================================================================
-## annotating
-annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
-final_out <- cbind(annotated, deisotoped_out)
-write.csv(final_out, "final_annotated_desiotoped.csv")
+## Annotated peak list
 
-q# =======================================================================
-## normalising based on TIC
-data <- read.csv("final_annotated_desiotoped.csv")
-rownames(data) <- data[,1]
-sums <- as.vector(colSums(data[,5:ncol(data)], na.rm=T))
-factor <- sums/mean(sums)
-TIC_normalised <- cbind(data[,2:4], t(t(data[,5:ncol(data)])/factor))
-
-write.csv(TIC_normalised, "final_annotated_deisotoped_norm.csv")
-
-##hist(factor, breaks=100)
-
-#########################################################################
-## =======================================================================
-## fill in missing peaks by integrating noise
-xset3 <- fillPeaks(xset2) # fills in missing peaks
-names <- groupnames(xset3, rtdec=2, mzdec=4)  
-## define decimal places for mz and RT values
-names <- substr(names, 2, 18)
+## update peaklist
+indices       <- match(deisotoped[,"mz.obs"], peaklist[,"mz"])
+tmp           <- peaklist[indices, ]
+rownames(tmp) <- NULL
+final_peak    <- cbind(annotated,tmp)
 
 ## =======================================================================
-## deisotope
-out <- groupval(xset3, method="maxint", value="into", intensity="maxo") 
-## if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
-rownames(out) <- names
-names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
+## save results
 
-spectra <- cbind(names_split$mz, out[,1], "", "")
-colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
+save(final_peak,deisotoped,annotated, file="./test-data/peak.RData")
 
-deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
-                          spectra=spectra)
-
-indices <- match(rownames(deisotoped), rownames(out))
-deisotoped_out <- out[indices, ]
-
-names_deiso <- rownames(deisotoped_out)
-names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, 
-                        deisotoped_out[,1:ncol(deisotoped_out)])
-
-write.csv(deisotoped_out, "xcms_fill_peak_area_raw_deisotoped.csv")
-
-## =======================================================================
-## annotate
-annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
-final_out <- cbind(annotated, deisotoped_out)
-write.csv(final_out, "final_annotated_desiotoped_fill.csv")
-
-## =======================================================================
-## normalising based on TIC
-data <- read.csv("final_annotated_desiotoped_fill.csv")
-rownames(data) <- data[,1]
-sums <- as.vector(colSums(data[,5:ncol(data)], na.rm=T))
-factor <- sums/mean(sums)
-TIC_normalised <- cbind(data[,2:4], t(t(data[,5:ncol(data)])/factor))
-
-write.csv(TIC_normalised, "final_annotated_deisotoped_fill_norm.csv")
-
-##hist(factor, breaks=100)
+write.csv(final_peak, "final_annotated_desiotoped.csv")
 
 ##########################################################################
+## Zoe's original codes
+## =======================================================================
+if (F) {
+  library(reshape2)
+  ## Deisotoping
+  names <- groupnames(xset, rtdec=2, mzdec=4)  
+  names <- substr(names, 2, 18)
+  out <- groupval(xset, method="maxint", value="into", intensity="maxo") 
+  rownames(out) <- names
+  names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
 
-## plot extracted ion chromatograms for each peak group (corrected RT) if
-## desired, can choose specific samples and/or mz
+  spectra <- cbind(names_split$mz, out[,1], "", "")
+  colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
 
-## xic.corr <- getEIC(xset3, rt = "corrected", groupidx = 1:nrow(xset3@groups))
-## plot(xic.corr, xset3, groupidx=1:nrow(xset3@groups), sampleidx=1:length(files))
+  deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5, 
+                            spectra=spectra)
 
+  indices <- match(rownames(deisotoped), rownames(out))
+  deisotoped_out <- out[indices, ]
 
-################################################################################################################################
+  names_deiso <- rownames(deisotoped_out)
+  names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
+  deisotoped_out <- cbind(names_deiso$mz, names_deiso$RT, 
+                          deisotoped_out[,1:ncol(deisotoped_out)])
 
+  ## =======================================================================
+  ## Annotating
+  annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
+  final_out <- cbind(annotated, deisotoped_out)
+
+}
