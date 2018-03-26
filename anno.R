@@ -2,8 +2,7 @@
 ## wl-15-03-2018, Thu: tidy R codes
 ## wl-21-03-2018, Wed: major changes
 ## wl-23-03-2018, Fri: test and debug deisotoping and annotating
-## To-Do
-##  1) test and debug makelibrary
+## wl-26-03-2018, Mon: Minor changes
 
 library(xcms)
 
@@ -77,25 +76,28 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class,lookup_FA,
       ## determine how many FAs places to be used for combination and
       ## generate combination of FAs
       FA_number <- as.numeric(lookup_lipid_class[lipidclass,"FA_number"])
-      FAnum <- FA_number
-      s1<-combn(FA_expt,FAnum)
+      FAnum     <- FA_number
+      s1        <- combn(FA_expt,FAnum)
 
       ## if sn2 or sn3 does not have FA bind 'empty' FA channel.
-      if(FAnum == 1){ s1<-rbind(s1,sn2<-vector(mode="numeric",length=ncol(s1)),sn3<-vector(mode="numeric",length=ncol(s1)))
+      if(FAnum == 1){ 
+        s1 <- rbind(s1,sn2 <- vector(mode="numeric",length=ncol(s1)),
+                    sn3 <- vector(mode="numeric",length=ncol(s1)))
         FAnum = FAnum +2}
-      if(FAnum == 2){ s1<-rbind(s1,sn3<-vector(mode="numeric",length=ncol(s1)))
-        FAnum = FAnum +1}
-
+      if(FAnum == 2){ 
+        s1 <- rbind(s1,sn3<-vector(mode="numeric",length=ncol(s1)))
+        FAnum = FAnum +1
+      }
 
       ## label the matrix
       if(FAnum == 3) row.names(s1) <-c("FA1", "FA2","FA3")
 
       ## add rows to matrix for massofFAs and formula
-      massofFAs<-vector(mode="numeric",length=ncol(s1))
-      s1 <- rbind(s1,massofFAs)
-      formula<-vector(mode="numeric",length=ncol(s1))
-      s1 <- rbind(s1,formula)
-      ##row.names(s1) <-c("FA1", "FA2","FA3", "massofFAs")
+      massofFAs       <- vector(mode="numeric",length=ncol(s1))
+      s1              <- rbind(s1,massofFAs)
+      formula         <- vector(mode="numeric",length=ncol(s1))
+      s1              <- rbind(s1,formula)
+      ##row.names(s1) <- c("FA1", "FA2","FA3", "massofFAs")
       for(i in 1:ncol(s1)){
 
         ## for 3 FAs
@@ -112,53 +114,53 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class,lookup_FA,
       }
 
       ## calculate total mass
-      totalmass<-vector(mode="numeric",length=ncol(s1))
-      s1 <- rbind(s1,totalmass)
+      totalmass <- vector(mode="numeric",length=ncol(s1))
+      s1        <- rbind(s1,totalmass)
 
       for(i in 1:ncol(s1)){
         s1["totalmass",i] <- as.numeric(s1["massofFAs",i]) + as.numeric(as.character(lookup_lipid_class[lipidclass,"headgroup_mass"])) - (as.numeric(lookup_lipid_class[lipidclass,"FA_number"])*as.numeric(lookup_element["H","mass"]))
       }
 
       ##make rows for charged lipids masses
-      protonated<-vector(mode="numeric",length=ncol(s1))
-      ammoniated<-vector(mode="numeric",length=ncol(s1))
-      sodiated<-vector(mode="numeric",length=ncol(s1))
-      potassiated<-vector(mode="numeric",length=ncol(s1))
-      deprotonated<-vector(mode="numeric",length=ncol(s1))
-      chlorinated<-vector(mode="numeric",length=ncol(s1))
-      acetate<-vector(mode="numeric",length=ncol(s1))
-      s1 <- rbind(s1,protonated, ammoniated, sodiated, potassiated, deprotonated, chlorinated, acetate)
+      protonated   <- vector(mode="numeric",length=ncol(s1))
+      ammoniated   <- vector(mode="numeric",length=ncol(s1))
+      sodiated     <- vector(mode="numeric",length=ncol(s1))
+      potassiated  <- vector(mode="numeric",length=ncol(s1))
+      deprotonated <- vector(mode="numeric",length=ncol(s1))
+      chlorinated  <- vector(mode="numeric",length=ncol(s1))
+      acetate      <- vector(mode="numeric",length=ncol(s1))
+      s1           <- rbind(s1,protonated, ammoniated, sodiated, potassiated, deprotonated, chlorinated, acetate)
 
       ##calculate charged lipids masses
       for(i in 1:ncol(s1)){
-        s1["protonated",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["H","mass"])),digits = 4)
-        s1["ammoniated",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["NH4","mass"])),digits = 4)
-        s1["sodiated",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["Na","mass"])),digits = 4)
-        s1["potassiated",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["K","mass"])),digits = 4)
+        s1["protonated",i]   <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["H","mass"])),digits = 4)
+        s1["ammoniated",i]   <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["NH4","mass"])),digits = 4)
+        s1["sodiated",i]     <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["Na","mass"])),digits = 4)
+        s1["potassiated",i]  <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["K","mass"])),digits = 4)
         s1["deprotonated",i] <- round((as.numeric(s1["totalmass",i]) - as.numeric(lookup_element["H","mass"])),digits = 4)
-        s1["chlorinated",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["Cl","mass"])),digits = 4)
-        s1["acetate",i] <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["CH3COO","mass"])),digits = 4)
+        s1["chlorinated",i]  <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["Cl","mass"])),digits = 4)
+        s1["acetate",i]      <- round((as.numeric(s1["totalmass",i]) + as.numeric(lookup_element["CH3COO","mass"])),digits = 4)
       }
 
       ##make rows for rounded charged lipids masses
-      round.protonated<-vector(mode="numeric",length=ncol(s1))
-      round.ammoniated<-vector(mode="numeric",length=ncol(s1))
-      round.sodiated<-vector(mode="numeric",length=ncol(s1))
-      round.potassiated<-vector(mode="numeric",length=ncol(s1))
-      round.deprotonated<-vector(mode="numeric",length=ncol(s1))
-      round.chlorinated<-vector(mode="numeric",length=ncol(s1))
-      round.acetate<-vector(mode="numeric",length=ncol(s1))
-      s1 <- rbind(s1,round.protonated, round.ammoniated, round.sodiated, round.potassiated, round.deprotonated, round.chlorinated, round.acetate)
+      round.protonated   <- vector(mode="numeric",length=ncol(s1))
+      round.ammoniated   <- vector(mode="numeric",length=ncol(s1))
+      round.sodiated     <- vector(mode="numeric",length=ncol(s1))
+      round.potassiated  <- vector(mode="numeric",length=ncol(s1))
+      round.deprotonated <- vector(mode="numeric",length=ncol(s1))
+      round.chlorinated  <- vector(mode="numeric",length=ncol(s1))
+      round.acetate      <- vector(mode="numeric",length=ncol(s1))
+      s1                 <- rbind(s1,round.protonated, round.ammoniated, round.sodiated, round.potassiated, round.deprotonated, round.chlorinated, round.acetate)
 
       ##calculate rounded charged lipids masses
       for(i in 1:ncol(s1)){
-        s1["round.protonated",i] <- round(as.numeric(s1["protonated",i]),digits = rounder)
-        s1["round.ammoniated",i] <- round(as.numeric(s1["ammoniated",i]),digits = rounder)
-        s1["round.sodiated",i] <- round(as.numeric(s1["sodiated",i]),digits = rounder)
-        s1["round.potassiated",i] <- round(as.numeric(s1["potassiated",i]),digits = rounder)
+        s1["round.protonated",i]   <- round(as.numeric(s1["protonated",i]),digits = rounder)
+        s1["round.ammoniated",i]   <- round(as.numeric(s1["ammoniated",i]),digits = rounder)
+        s1["round.sodiated",i]     <- round(as.numeric(s1["sodiated",i]),digits = rounder)
+        s1["round.potassiated",i]  <- round(as.numeric(s1["potassiated",i]),digits = rounder)
         s1["round.deprotonated",i] <- round(as.numeric(s1["deprotonated",i]),digits = rounder)
-        s1["round.chlorinated",i] <- round(as.numeric(s1["chlorinated",i]),digits = rounder)
-        s1["round.acetate",i] <- round(as.numeric(s1["acetate",i]),digits = rounder)
+        s1["round.chlorinated",i]  <- round(as.numeric(s1["chlorinated",i]),digits = rounder)
+        s1["round.acetate",i]      <- round(as.numeric(s1["acetate",i]),digits = rounder)
       }
 
       library <- cbind(library,s1)
@@ -339,7 +341,29 @@ if (T) {
 }
 
 ## ======================================================================== 
-## Make library for annotation
+## load XCMS data set
+
+load(paste0(home_dir,"test-data/xset.RData"))
+peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
+
+## keep only mz and rt in peak list
+peaklist <- subset(peaklist, select=-c(mzmin,mzmax,rtmin,rtmax,npeaks,mzML))
+## round mz and rt
+peaklist <- transform(peaklist, mz=round(mz,4),rt=round(rt,2))
+
+## =======================================================================
+## Deisotoping
+
+## spectra        <- as.matrix(peaklist[,c("mz","X1")])
+spectra           <- as.matrix(peaklist[,c(1,3)])  ## mz and intensity of the 1st sample
+spectra           <- cbind(spectra,"","")
+colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
+
+deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5,
+                          spectra=spectra)
+
+## ======================================================================== 
+## Annotating
 
 ## read in library files
 read <- read.csv(paste(lib_dir,"lib_FA.csv",sep="/"), sep=",", header=T)
@@ -358,33 +382,9 @@ read <- read.csv(paste(lib_dir,"lib_modification.csv",sep="/"), sep=",", header=
 lookup_mod <- read[,2:ncol(read)]
 row.names(lookup_mod ) <- read[,1]
 
-dbase <- makelibrary(ionisation_mode, lookup_lipid_class, 
-                     lookup_FA, lookup_element)
-
-## ======================================================================== 
-## load XCMS data set
-
-load(paste0(home_dir,"test-data/xset.RData"))
-peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
-
-## keep only mz and rt in peak list
-peaklist <- subset(peaklist, select=-c(mzmin,mzmax,rtmin,rtmax,npeaks,mzML))
-## round mz and rt
-peaklist <- transform(peaklist, mz=round(mz,4),rt=round(rt,2))
-
-## =======================================================================
-## Deisotoping and Annotating
-
-## spectra  <- as.matrix(peaklist[,c("mz","X1")])
-spectra  <- as.matrix(peaklist[,c(1,3)])  ## mz and intensity of the 1st sample
-spectra  <- cbind(spectra,"","")
-colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification" )
-
-## -------------------------------------------------------------------  
-deisotoped <- deisotoping(ppm=5, no_isotopes=2, prop.1=0.9, prop.2=0.5,
-                          spectra=spectra)
-
-annotated  <- annotating(deisotoped, adducts, ppm.annotate, dbase)
+dbase     <- makelibrary(ionisation_mode, lookup_lipid_class, lookup_FA, lookup_element)
+## Annotating
+annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 
 ## =======================================================================
 ## Annotated peak list
@@ -400,7 +400,8 @@ final_peak    <- cbind(annotated,tmp)
 
 save(final_peak,deisotoped,annotated, file="./test-data/peak.RData")
 
-write.csv(final_peak, "final_annotated_desiotoped.csv")
+write.csv(final_peak, file="./test-data/lc_ms_data.csv",
+          row.names = FALSE)
 
 ##########################################################################
 ## Zoe's original codes
