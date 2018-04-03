@@ -401,7 +401,11 @@ final_peak    <- cbind(annotated,tmp)
 save(final_peak,deisotoped,annotated, file="./test-data/peak.RData")
 
 write.csv(final_peak, file="./test-data/lc_ms_data.csv",
-          row.names = FALSE)
+          row.names = FALSE, quote = FALSE)
+
+## write.table(final_peak, file="./test-data/lc_ms_data.tsv", sep = "\t",
+##             row.names = FALSE, quote = FALSE) 
+
 
 ##########################################################################
 ## Zoe's original codes
