@@ -1,4 +1,4 @@
-f# wl-12-03-2018, Mon: apply xcms for LC-MS 
+## wl-12-03-2018, Mon: apply xcms for LC-MS 
 ## wl-19-03-2018, Mon: Use Zoe's parameters seeting for 'xcms'
 ## wl-20-03-2018, Tue: use 'peakTable' to get peak list
 
