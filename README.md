@@ -1,6 +1,12 @@
-# lcms #
+# LCMS for Galaxy #
 
-LC-MS data conversion and annotation for lipdomics analysis.
+Galaxy tool for LC-MS data conversion and annotation for lipdomics analysis.
+
+
+The original codes by Zoe Hall is located in 
+[lcms_processing](https://github.com/hallz/lcms_processing_). 
+
+## Progress ##
 
 There are three R files:
 
@@ -14,5 +20,3 @@ There are three R files:
 - `lcms.R`: Zoe Hall's original R code with a little tidy up.
 
 
-The directory `code-ori` includes Zoe Hall's original R codes. For details,
-see Zoe Hall's [GitHub](https://github.com/hallz/lcms_processing_). 
