@@ -1,5 +1,5 @@
 ## wl-12-03-2018, Mon: apply xcms for LC-MS 
-## wl-19-03-2018, Mon: Use Zoe's parameters seeting for 'xcms'
+## wl-19-03-2018, Mon: Use Zoe's parameters setting for 'xcms'
 ## wl-20-03-2018, Tue: use 'peakTable' to get peak list
 
 library(xcms)
@@ -8,7 +8,7 @@ library(xcms)
 path  <- "C:/R_lwc/data/20180309_EC_SM_AM12_PartIV/mzML"
 files <- list.files(path, pattern="mzML",recursive = F, full.names = TRUE)
 
-## parameters qor 'xcmsSet' (based on Zoe Hall's setting)
+## parameters for 'xcmsSet' (based on Zoe Hall's setting)
 FWHM       <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
 snthresh   <- 5 # set the signal to noise threshold
 ## minimum fraction of samples necessary for it to be a valid peak group
@@ -26,11 +26,11 @@ if (F) {
 
   xset <- group(xset) ## slotNames(xset)
 
-  ## wl-15-03-2018, Thu: Possible memqry problem?
+  ## wl-15-03-2018, Thu: Possible memory problem?
   xset <- retcor(xset, method="obiwarp", profStep=0.1, plottype="deviation") 
 
   xset <- group(xset, bw = 5,  minfrac = minfrac, mzwid = 0.025) 
-  ## lwc-05-11-2013: group has three emthods: group.density (default), 
+  ## lwc-05-11-2013: group has three methods: group.density (default), 
   ##  group.mzClust and group.nearest.
 
   xset <- fillPeaks(xset) 
