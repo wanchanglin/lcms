@@ -1,14 +1,8 @@
 #' wl-12-03-2018, Mon: commence
-#' wl-15-03-2018, Thu: tidy R codes
-#' wl-21-03-2018, Wed: major changes
-#' wl-23-03-2018, Fri: test and debug deisotoping and annotating
-#' wl-26-03-2018, Mon: Minor changes
 
 library(xcms)
 
 #' ========================================================================
-#' Functions for deisoteping and annotating
-
 #' wl-20-03-2018, Tue: take this function from 'massPix'
 makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
                         lookup_element) {
@@ -174,6 +168,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
   return(library)
 }
 
+#' ========================================================================
 #' wl-23-03-2018, Fri: debug and tidy up
 deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
                         spectra = spectra) {
@@ -239,6 +234,7 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
   return(deisotoped)
 }
 
+#' ========================================================================
 #' wl-23-03-2018, Fri: Debug and tidy up.
 #' Notes: No ionisation mode control inside the function. Use ionisation
 #'        mode to control 'adducts' outside this function.
@@ -352,129 +348,95 @@ annotating <- function(deisotoped,
 }
 
 #' ========================================================================
-#' settings
-
-home_dir <- "C:/R_lwc/lcms/" #' for windows
-lib_dir <- paste0(home_dir, "libraries/")
-ppm.annotate <- 15 # choose ppm for annotations
-ionisation_mode <- "positive" # either "positive" or "negative"
-
-#' --------------------------------------------------------------------
-if (T) {
-  #' wl-23-03-2018, Fri: from 'annotate' of 'massPix'
-  if (ionisation_mode == "positive") {
-    adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
-  } else {
-    adducts <- c(H = F, NH4 = F, Na = F, K = F, dH = T, Cl = T, OAc = F)
+#' peakTable from 'xcms'
+#' wl-20-03-2018, Tue: Note that the dot arguments sgould be 'groupval'
+#' Use 'peakTable' directly.
+#' peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
+setMethod("peakTable", "xcmsSet", function(object, filebase = character(), ...) {
+  if (length(sampnames(object)) == 1) {
+    return(object@peaks)
   }
-} else {
-  #' wl-23-03-2018, Fri: this the default value for 'annotating'
-  adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F)
-}
 
-#' ========================================================================
-#' load XCMS data set
+  if (nrow(object@groups) < 1) {
+    stop("First argument must be an xcmsSet with group information or contain only one sample.")
+  }
 
-load(paste0(home_dir, "test-data/xset.RData"))
-peaklist <- peakTable(xset, method = "maxint", value = "into", intensity = "maxo")
-
-#' keep only mz and rt in peak list
-peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks, mzML))
-#' round mz and rt
-peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
-
-#' =======================================================================
-#' Deisotoping
-
-#' spectra        <- as.matrix(peaklist[,c("mz","X1")])
-spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
-spectra <- cbind(spectra, "", "")
-colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
-
-deisotoped <- deisotoping(
-  ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
-  spectra = spectra
-)
-
-#' ========================================================================
-#' Annotating
-
-#' read in library files
-read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",", header = T)
-lookup_FA <- read[, 2:4]
-row.names(lookup_FA) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_class.csv", sep = "/"), sep = ",", header = T)
-lookup_lipid_class <- read[, 2:3]
-row.names(lookup_lipid_class) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_element.csv", sep = "/"), sep = ",", header = T)
-lookup_element <- read[, 2:3]
-row.names(lookup_element) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", header = T)
-lookup_mod <- read[, 2:ncol(read)]
-row.names(lookup_mod) <- read[, 1]
-
-dbase <- makelibrary(ionisation_mode, lookup_lipid_class, lookup_FA, lookup_element)
-#' Annotating
-annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
-
-#' =======================================================================
-#' Annotated peak list
-
-#' update peaklist
-indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
-tmp <- peaklist[indices, ]
-rownames(tmp) <- NULL
-final_peak <- cbind(annotated, tmp)
-
-#' =======================================================================
-#' save results
-
-save(final_peak, deisotoped, annotated, file = "./test-data/peak.RData")
-
-write.csv(final_peak,
-  file = "./test-data/lc_ms_data.csv",
-  row.names = FALSE, quote = FALSE
-)
-
-#' write.table(final_peak, file="./test-data/lc_ms_data.tsv", sep = "\t",
-#'             row.names = FALSE, quote = FALSE)
+  groupmat <- groups(object)
 
 
-##########################################################################
-#' Zoe's original codes
-#' =======================================================================
-if (F) {
-  library(reshape2)
-  #' Deisotoping
-  names <- groupnames(xset, rtdec = 2, mzdec = 4)
-  names <- substr(names, 2, 18)
-  out <- groupval(xset, method = "maxint", value = "into", intensity = "maxo")
-  rownames(out) <- names
-  names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
+  if (!"value" %in% names(list(...))) {
+    ts <- data.frame(cbind(groupmat, groupval(object, value = "into", ...)), row.names = NULL)
+  } else {
+    ts <- data.frame(cbind(groupmat, groupval(object, ...)), row.names = NULL)
+  }
 
-  spectra <- cbind(names_split$mz, out[, 1], "", "")
-  colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+  cnames <- colnames(ts)
 
-  deisotoped <- deisotoping(
-    ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
-    spectra = spectra
-  )
+  if (cnames[1] == "mzmed") {
+    cnames[1] <- "mz"
+  } else {
+    stop("mzmed column missing")
+  }
+  if (cnames[4] == "rtmed") {
+    cnames[4] <- "rt"
+  } else {
+    stop("mzmed column missing")
+  }
 
-  indices <- match(rownames(deisotoped), rownames(out))
-  deisotoped_out <- out[indices, ]
+  colnames(ts) <- cnames
 
-  names_deiso <- rownames(deisotoped_out)
-  names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-  deisotoped_out <- cbind(
-    names_deiso$mz, names_deiso$RT,
-    deisotoped_out[, 1:ncol(deisotoped_out)]
-  )
+  if (length(filebase)) {
+    write.table(ts, paste(filebase, ".tsv", sep = ""),
+      quote = FALSE,
+      sep = "\t", col.names = NA
+    )
+  }
 
-  #' =======================================================================
-  #' Annotating
-  annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
-  final_out <- cbind(annotated, deisotoped_out)
+  ts
+})
+
+#' =========================================================================
+#' Create complete feature table from CAMERA
+#' xs     - xcmsSet object
+#' method - groupval parameter method
+#' value  - groupval parameter method
+#' ------------------------------------------------------------------
+#' wl-15-05-2019, Wed: get peak list after annotation by CAMERA.
+#' Note: need the original mzML files
+#' library(CAMERA)
+#' xsa         <- annotate(xset, cor_eic_th=0)
+#' peaklist.1  <- getPeaklist(xsa)
+#' or get peak list directly from CAMERA's hidden function
+#' peaklist.2 <- CAMERA:::getPeaks_selection(xset)
+getPeaks_selection <- function(xs, method = "medret", value = "into") {
+  if (!class(xs) == "xcmsSet") {
+    stop("Parameter xs is no xcmsSet object\n")
+  }
+
+  #' Testing if xcmsSet is grouped
+  if (nrow(xs@groups) > 0 && length(xs@filepaths) > 1) {
+    #' get grouping information
+    groupmat <- groups(xs)
+    #' generate data.frame for peaktable
+    ts <- data.frame(cbind(groupmat, groupval(xs, method = method, value = value)), row.names = NULL)
+    ## rename column names
+    cnames <- colnames(ts)
+    if (cnames[1] == "mzmed") {
+      cnames[1] <- "mz"
+    } else {
+      stop("Peak information ?!?")
+    }
+    if (cnames[4] == "rtmed") {
+      cnames[4] <- "rt"
+    } else {
+      stop("Peak information ?!?")
+    }
+    colnames(ts) <- cnames
+  } else if (length(sampnames(xs)) == 1) { # Contains only one sample?
+    ts <- xs@peaks
+  } else {
+    stop("First argument must be a xcmsSet with group information or contain only one sample.")
+  }
+
+  return(as.matrix(ts))
 }
