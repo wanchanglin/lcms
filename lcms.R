@@ -1,19 +1,31 @@
-#' wl-12-03-2018, Mon: commence
-#' wl-15-03-2018, Thu: tidy R codes
+#' wl-12-03-2018, Mon: Commence
+#' wl-15-03-2018, Thu: Tidy R codes
 #' wl-19-03-2018, Mon: Use Zoe's parameters setting for 'xcms'
-#' wl-20-03-2018, Tue: use 'peakTable' to get peak list
-#' wl-21-03-2018, Wed: major changes
-#' wl-23-03-2018, Fri: test and debug deisotoping and annotating
+#' wl-20-03-2018, Tue: Use 'peakTable' to get peak list
+#' wl-21-03-2018, Wed: Major changes
+#' wl-23-03-2018, Fri: Test and debug deisotoping and annotating
 #' wl-26-03-2018, Mon: Minor changes
-
 
 #' ========================================================================
 #' settings
 
-home_dir <- "C:/R_lwc/lcms/" #' for windows
+home_dir <- "C:/R_lwc/lcms/" 
 lib_dir <- paste0(home_dir, "libraries/")
 ppm.annotate <- 15 # choose ppm for annotations
 ionisation_mode <- "positive" # either "positive" or "negative"
+
+#' file path of mzML files
+path <- "C:/R_lwc/lcms/test-data/lcms_neg"
+files <- list.files(path, pattern = "mzML", recursive = F, full.names = TRUE)
+
+#' parameters for 'xcmsSet' (based on Zoe Hall's setting)
+FWHM <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
+snthresh <- 5 # set the signal to noise threshold
+#' minimum fraction of samples necessary for it to be a valid peak group
+minfrac <- 0.25
+#' use either "bin" (better for centroid, default), "binlin" (better for
+#' profile)
+profmethod <- "binlin"
 
 #' --------------------------------------------------------------------
 if (T) {
@@ -28,19 +40,6 @@ if (T) {
   adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F)
 }
 
-#' --------------------------------------------------------------------
-#' file path of mzML files
-path <- "C:/R_lwc/lcms/test-data/lcms_neg"
-files <- list.files(path, pattern = "mzML", recursive = F, full.names = TRUE)
-
-#' parameters for 'xcmsSet' (based on Zoe Hall's setting)
-FWHM <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
-snthresh <- 5 # set the signal to noise threshold
-#' minimum fraction of samples necessary for it to be a valid peak group
-minfrac <- 0.25
-#' use either "bin" (better for centroid, default), "binlin" (better for
-#' profile)
-profmethod <- "binlin"
 
 #' ========================================================================
 #' Run xcms
@@ -97,20 +96,18 @@ peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks, mzM
 #' =======================================================================
 #' Deisotoping
 
-#' spectra        <- as.matrix(peaklist[,c("mz","X1")])
+#' spectra <- as.matrix(peaklist[,c("mz","X1")])
 spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
 spectra <- cbind(spectra, "", "")
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
 
-deisotoped <- deisotoping(
-  ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
-  spectra = spectra
-)
+deisotoped <- deisotoping(ppm = 5, no_isotopes = 2, prop.1 = 0.9, 
+                          prop.2 = 0.5, spectra = spectra)
 
 #' ========================================================================
 #' Annotating
 
-#' read in library files
+#' library files
 read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",", header = T)
 lookup_FA <- read[, 2:4]
 row.names(lookup_FA) <- read[, 1]
@@ -127,12 +124,11 @@ read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", h
 lookup_mod <- read[, 2:ncol(read)]
 row.names(lookup_mod) <- read[, 1]
 
+#' make library
 dbase <- makelibrary(ionisation_mode, lookup_lipid_class, lookup_FA, lookup_element)
-#' Annotating
-annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 
-#' =======================================================================
-#' Annotated peak list
+#' annotating
+annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 
 #' update peaklist
 indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
@@ -142,7 +138,6 @@ final_peak <- cbind(annotated, tmp)
 
 #' =======================================================================
 #' save results
-
 save(final_peak, deisotoped, annotated, file = "./test-data/peak.RData")
 
 write.csv(final_peak,
@@ -155,9 +150,10 @@ write.csv(final_peak,
 
 
 #' =======================================================================
-#' Zoe's original codes
+#' Some original codes
+#' library(reshape2) ## for colsplit
 if (F) {
-  library(reshape2)
+
   #' Deisotoping
   names <- groupnames(xset, rtdec = 2, mzdec = 4)
   names <- substr(names, 2, 18)
@@ -183,7 +179,6 @@ if (F) {
     deisotoped_out[, 1:ncol(deisotoped_out)]
   )
 
-  #' =======================================================================
   #' Annotating
   annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
   final_out <- cbind(annotated, deisotoped_out)
