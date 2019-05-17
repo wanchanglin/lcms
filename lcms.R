@@ -5,70 +5,234 @@
 #' wl-21-03-2018, Wed: Major changes
 #' wl-23-03-2018, Fri: Test and debug deisotoping and annotating
 #' wl-26-03-2018, Mon: Minor changes
+#' wl-17-05-2019, Fri: modification for Galaxy
 
-#' ========================================================================
-#' settings
+## ==== General settings ====
+rm(list = ls(all = T))
 
-home_dir <- "C:/R_lwc/lcms/" 
-lib_dir <- paste0(home_dir, "libraries/")
-ppm.annotate <- 15 # choose ppm for annotations
-ionisation_mode <- "positive" # either "positive" or "negative"
+#' flag for command-line use or not. If false, only for debug interactively.
+com_f <- F
 
-#' file path of mzML files
-path <- "C:/R_lwc/lcms/test-data/lcms_neg"
-files <- list.files(path, pattern = "mzML", recursive = F, full.names = TRUE)
+#' galaxy will stop even if R has warning message
+options(warn = -1) #' disable R warning. Turn back: options(warn=0)
 
-#' parameters for 'xcmsSet' (based on Zoe Hall's setting)
-FWHM <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
-snthresh <- 5 # set the signal to noise threshold
-#' minimum fraction of samples necessary for it to be a valid peak group
-minfrac <- 0.25
-#' use either "bin" (better for centroid, default), "binlin" (better for
-#' profile)
-profmethod <- "binlin"
+#' ------------------------------------------------------------------------
+#' Setup R error handling to go to stderr
+#' options( show.error.messages=F, error = function (){
+#'   cat( geterrmessage(), file=stderr() )
+#'   q( "no", 1, F )
+#' })
 
-#' --------------------------------------------------------------------
-if (T) {
-  #' wl-23-03-2018, Fri: from 'annotate' of 'massPix'
-  if (ionisation_mode == "positive") {
-    adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
-  } else {
-    adducts <- c(H = F, NH4 = F, Na = F, K = F, dH = T, Cl = T, OAc = F)
-  }
-} else {
-  #' wl-23-03-2018, Fri: this the default value for 'annotating'
-  adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F)
+#' we need that to not crash galaxy with an UTF8 error on German LC settings.
+loc <- Sys.setlocale("LC_MESSAGES", "en_US.UTF-8")
+
+suppressPackageStartupMessages({
+  library(optparse)
+  library(WriteXLS)
+  library(xcms)
+})
+
+#' wl-28-08-2018, Tue: Convert a string seperated by comma into character vector
+str_vec <- function(x) {
+  x <- unlist(strsplit(x, ","))
+  x <- gsub("^[ \t]+|[ \t]+$", "", x) #' trim white spaces
 }
 
+## ==== Command line or interactive setting ====
+if (com_f) {
+
+  #' -----------------------------------------------------------------------
+  #' Setup home directory
+  #' wl-24-11-2017, Fri: A dummy function for the base directory. The reason
+  #' to write such a function is to keep the returned values by
+  #' 'commandArgs' with 'trailingOnly = FALSE' in a local environment
+  #' otherwise 'parse_args' will use the results of
+  #' 'commandArgs(trailingOnly = FALSE)' even with 'args =
+  #' commandArgs(trailingOnly = TRUE)' in its argument area.
+  func <- function() {
+    argv <- commandArgs(trailingOnly = FALSE)
+    path <- sub("--file=", "", argv[grep("--file=", argv)])
+  }
+  #' prog_name <- basename(func())
+  tool_dir <- paste0(dirname(func()), "/")
+
+  option_list <-
+    list(
+      make_option(c("-v", "--verbose"),
+        action = "store_true", default = TRUE,
+        help = "Print extra output [default]"
+      ),
+      make_option(c("-q", "--quietly"),
+        action = "store_false",
+        dest = "verbose", help = "Print little output"
+      ),
+
+      #' -------------------------------------------------------------------
+      #' input
+      make_option("--mzxml_file",
+        type = "character",
+        help = "mzXML/ mzML file directory or full file list seperated by comma"
+      ),
+      make_option("--targ_file",
+        type = "character",
+        help = "Lipid target list with columns of m/z and lipid name"
+      ),
+      make_option("--samp_name",
+        type = "character", default = "",
+        help = "Sample names. Default is the names of mz XML file"
+      ),
+      make_option("--rt_low",
+        type = "double", default = 20.0,
+        help = "Start time"
+      ),
+      make_option("--rt_high",
+        type = "double", default = 60.0,
+        help = "End time"
+      ),
+      make_option("--mz_low",
+        type = "double", default = 200.0,
+        help = "Start m/z"
+      ),
+      make_option("--mz_high",
+        type = "double", default = 1200.0,
+        help = "End m/z"
+      ),
+      make_option("--hwidth",
+        type = "double", default = 0.01,
+        help = "m/z window size/height for peak finder"
+      ),
+
+      #' output files (Excel)
+      make_option("--sign_file",
+        type = "character", default = "signals.tsv",
+        help = "Save peak signals (peak table)"
+      ),
+      make_option("--devi",
+        type = "logical", default = TRUE,
+        help = "Return m/z deviation results or not"
+      ),
+      make_option("--devi_file",
+        type = "character", default = "deviations.tsv",
+        help = "Save m/z deviations"
+      ),
+      make_option("--indi",
+        type = "logical", default = TRUE,
+        help = "Return each sample's signal and m/z deviation or not"
+      ),
+      make_option("--indi_file",
+        type = "character", default = "sam_indi.xlsx",
+        help = "Save individual sample's signal and m/z deviation in Excel"
+      )
+    )
+
+  opt <- parse_args(
+    object = OptionParser(option_list = option_list),
+    args = commandArgs(trailingOnly = TRUE)
+  )
+  print(opt)
+} else {
+  tool_dir <- "C:/R_lwc/lcms/"         #' for windows
+  #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
+  opt <- list(
+    #' input
+
+     #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_005.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_006.mzML"),
+     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_007.mzML"),
+     #'                    sep = ","
+     #'                    ),
+    
+    mzxml_file = paste(paste0(tool_dir, "test-data/lcms_pos")),
+
+    #' parameters for 'xcmsSet' (based on Zoe Hall's setting)
+    FWHM = 3, # set approximate FWHM (in seconds) of chromatographic peaks
+    snthresh = 5, # set the signal to noise threshold
+    #' minimum fraction of samples necessary for it to be a valid peak group
+    minfrac = 0.25,
+    #' use either "bin" (better for centroid, default), "binlin" (better for
+    #' profile)
+    profmethod = "binlin",
+
+    ppm.annotate = 15, # choose ppm for annotations
+    ionisation_mode = "positive", # either "positive" or "negative"
+    adducts = c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
+
+    #' Output
+    #' sign_file = paste0(tool_dir, "test-data/res_dimsp/signals.tsv"),
+    #' devi = TRUE,
+    #' devi_file = paste0(tool_dir, "test-data/res_dimsp/deviations.tsv"),
+    #' indi = TRUE,
+    #' indi_file = paste0(tool_dir, "test-data/res_dimsp/individuals.xlsx")
+  )
+}
+
+suppressPackageStartupMessages({
+  source(paste0(tool_dir, "lcms_func.R"))
+})
+
+lib_dir <- paste0(tool_dir, "libraries/")
+
+
+#' --------------------------------------------------------------------
+#' if (T) {
+#'   #' wl-23-03-2018, Fri: from 'annotate' of 'massPix'
+#'   if (ionisation_mode == "positive") {
+#'     adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
+#'   } else {
+#'     adducts <- c(H = F, NH4 = F, Na = F, K = F, dH = T, Cl = T, OAc = F)
+#'   }
+#' } else {
+#'   #' wl-23-03-2018, Fri: this the default value for 'annotating'
+#'   adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F)
+#' }
+
+## ==== Main process ====
+
+#' process multiple input files seperated by comma
+#' wl-04-03-2019, Mon: add file directory option. Note that it is not for
+#' galaxy.
+if (dir.exists(opt$mzxml_file)) {   ## file directory
+  opt$mzxml_file <- list.files(opt$mzxml_file, pattern = "mzml|mzxml", 
+                               ignore.case = T, recursive = F, 
+                               full.names = TRUE)
+} else {  ## multiple files
+  opt$mzxml_file <- str_vec(opt$mzxml_file)
+} 
 
 #' ========================================================================
 #' Run xcms
 if (T) {
-  xset <- xcmsSet(files,
+  xset <- xcmsSet(opt$mzxml_file,
     method = "matchedFilter", step = 0.1,
-    sigma = FWHM / 2.3548, snthresh = snthresh,
-    profmethod = profmethod
+    sigma = opt$FWHM / 2.3548, snthresh = opt$snthresh,
+    profmethod = opt$profmethod
   )
 
   xset <- group(xset) #' slotNames(xset)
 
+  #' corrects retention times
+  xset <- retcor(xset, method = "obiwarp", profStep = 0.1, 
+                 plottype = "deviation")
   #' wl-15-03-2018, Thu: Possible memory problem?
-  xset <- retcor(xset, method = "obiwarp", profStep = 0.1, plottype = "deviation")
 
-  xset <- group(xset, bw = 5, minfrac = minfrac, mzwid = 0.025)
+  xset <- group(xset, bw = 5, minfrac = opt$minfrac, mzwid = 0.025)
   #' lwc-05-11-2013: group has three methods: group.density (default),
   #'  group.mzClust and group.nearest.
 
   xset <- fillPeaks(xset)
   #' Note: need mzML files to fill in missing peaks
 
-  save(xset, file = "./test-data/xset_neg.RData")
+  save(xset, file = "./test-data/xset_pos.RData")
 } else {
-  load("./test-data/xset.RData")
+  load("./test-data/xset_pos.RData")
 }
 
 #' ========================================================================
-#' lwc-08-10-2013: Get peak lists.
+#' Get peak lists.
 peakmat <- xcms::peaks(xset)
 #' Note: two arguments in 'groupval', 'value' and 'intensity' will use this
 #' matrix's intensity columns
