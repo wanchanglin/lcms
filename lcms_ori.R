@@ -5,10 +5,20 @@
 #' -----------------------------------------------------------------------
 #' wl-12-03-2018, Mon: commence
 #' wl-15-03-2018, Thu: tidy R codes
+#' wl-20-05-2019, Mon: Some notes:
+#'  - Use peak area instead of peak height for deisotyping
+#'  - Deisotyping based on peaks with/without missing value filling. Should
+#'    based on MV filling
+#'  - Deisotyping based on mz and the first sample's intensity. Should use
+#'    average of all sample intesity
+#'  - should use 'peakTable' instead of 'low level' function such as
+#'    'groupval' and 'groupnames'. If so, R package 'reshape2' funcion
+#'    'colsplit' is no longer needed.
 
 library(xcms)
 library(reshape2)
 
+## ==== Functions ====
 #' Make lipid library
 makelibrary <- function(sel.class, fixed = F, fixed_FA, lookup_lipid_class,
                         lookup_FA, lookup_element) {
@@ -277,11 +287,10 @@ annotating <- function(deisotoped,
   }
 }
 
-#' ========================================================================
-#' parameter setting
+## ==== parameter setting ====
 
-spectra_dir <- "C:/Users/hallz/Documents/Processing_temp/" # where your mzML files are stored
-lib_dir <- "O:/Groups/LPS/BioComputing/lcms_processing/libraries" # the folder where your library files are stored
+spectra_dir <- "C:/R_lwc/lcms/test-data/lcms_pos" # where your mzML files are stored
+lib_dir <- "C:/R_lwc/lcms/test-data/libraries" # the folder where your library files are stored
 
 FWHM <- 3 # set approximate FWHM (in seconds) of chromatographic peaks
 snthresh <- 5 # set the signal to noise threshold
@@ -292,8 +301,7 @@ adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F) # choose wh
 ppm.annotate <- 15 # choose ppm for annotations
 ionisation_mode <- "positive" # either "positive" or "negative" - determines which classes of lipids to search for
 
-#' ========================================================================
-#' Read in library files
+## ==== Read in library files ====
 setwd(lib_dir)
 
 read <- read.csv("lib_FA.csv", sep = ",", header = T)
@@ -369,8 +377,7 @@ dbase <- makelibrary(sel.class,
 )
 #' wl-15-03-2018: 'fixed-FA' will be one of 'FA_expt'.
 
-#' ========================================================================
-#' XCMS
+## ==== XCMS ====
 
 #' place converted mzML files in working directory
 setwd(spectra_dir)
@@ -394,6 +401,10 @@ xset2 <- retcor(xset, method = "obiwarp", profStep = 0.1, plottype = "deviation"
 
 xset2 <- group(xset2, bw = 5, minfrac = minfrac, mzwid = 0.025)
 #' groups data based on corrected retention times
+
+#' wl-20-05-2019, Mon: save results
+#' save(xset2, file = "C:/R_lwc/lcms/res/xset2_pos.RData")
+#' load("C:/R_lwc/lcms/res/xset2_pos.RData")
 
 #' check for retention time outliers and exclude samples if necessary
 rmsd <- sapply(1:length(xset2@rt$corrected), function(x) {
@@ -421,7 +432,8 @@ rownames(out) <- names
 out[is.na(out)] <- 0
 write.csv(out, "xcms_peak_area_raw.csv")
 
-#' =======================================================================
+## ==== Peaks without missing value filling ====
+
 #' deisotoping - working with raw peak area - can also change "out" to use
 #' for peak height or the fitered results (value = into/intf/maxo/maxf)
 
@@ -432,7 +444,7 @@ rownames(out) <- names
 out[is.na(out)] <- 0 # replace NAs with 0
 names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
 
-spectra <- cbind(names_split$mz, out[, 1], "", "")
+spectra <- cbind(names_split$mz, out[, 1], "", "") #' wl-20-05-2019, Mon: why 1?
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
 
 deisotoped <- deisotoping(
@@ -452,13 +464,11 @@ deisotoped_out <- cbind(
 
 write.csv(deisotoped_out, "xcms_peak_area_raw_deisotoped.csv")
 
-#' =======================================================================
 #' annotating
 annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 final_out <- cbind(annotated, deisotoped_out)
 write.csv(final_out, "final_annotated_desiotoped.csv")
 
-#' =======================================================================
 #' normalising based on TIC
 data <- read.csv("final_annotated_desiotoped.csv")
 rownames(data) <- data[, 1]
@@ -470,14 +480,14 @@ write.csv(TIC_normalised, "final_annotated_deisotoped_norm.csv")
 
 #' hist(factor, breaks=100)
 
-#' =======================================================================
+## ==== Peaks with missing value filling ====
+
 #' fill in missing peaks by integrating noise
 xset3 <- fillPeaks(xset2) # fills in missing peaks
 names <- groupnames(xset3, rtdec = 2, mzdec = 4)
 #' define decimal places for mz and RT values
 names <- substr(names, 2, 18)
 
-#' =======================================================================
 #' deisotope
 out <- groupval(xset3, method = "maxint", value = "into", intensity = "maxo")
 #' if multiple peaks choose one with highest intensity based on maxo (peak hieght raw)
@@ -504,13 +514,11 @@ deisotoped_out <- cbind(
 
 write.csv(deisotoped_out, "xcms_fill_peak_area_raw_deisotoped.csv")
 
-#' =======================================================================
 #' annotate
 annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
 final_out <- cbind(annotated, deisotoped_out)
 write.csv(final_out, "final_annotated_desiotoped_fill.csv")
 
-#' =======================================================================
 #' normalising based on TIC
 data <- read.csv("final_annotated_desiotoped_fill.csv")
 rownames(data) <- data[, 1]
