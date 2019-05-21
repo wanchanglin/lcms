@@ -1,11 +1,11 @@
 #' wl-12-03-2018, Mon: commence
-
-library(xcms)
+#' wl-21-05-2019, Tue: re-take 'makelibrary' from 'massPix'
 
 #' ========================================================================
-#' wl-20-03-2018, Tue: take this function from 'massPix'
-makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
-                        lookup_element) {
+#' wl-21-05-2019, Tue: take this function from 'massPix' and remove 
+#'  'sel.class' argument
+makelibrary <- function(ionisation_mode, fixed = F, fixed_FA,
+                        lookup_lipid_class, lookup_FA, lookup_element) {
   cat("\nMaking library of lipid masses...\n")
   if (ionisation_mode == "positive") {
     sel.class <- c(
@@ -47,7 +47,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
       F, # CE
       T, # FFA
       F, # SM
-      T # Cer
+      T # Cer - ZLH changed this to true 20.03.18
     )
   }
 
@@ -68,25 +68,28 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
       #' lipidclass = "TG"
       lipidclass <- row.names(lookup_lipid_class[i, ])
 
-
       #' determine how many FAs places to be used for combination and
       #' generate combination of FAs
       FA_number <- as.numeric(lookup_lipid_class[lipidclass, "FA_number"])
-      FAnum <- FA_number
+      if (fixed == TRUE) FAnum <- FA_number - 1 else FAnum <- FA_number
       s1 <- combn(FA_expt, FAnum)
+
+      #' if one place is fixed add this FA to the matrix
+      if (fixed == TRUE) {
+        s1 <- rbind(s1, "fixed" = fixed_FA)
+        FAnum <- FAnum + 1
+      }
 
       #' if sn2 or sn3 does not have FA bind 'empty' FA channel.
       if (FAnum == 1) {
-        s1 <- rbind(
-          s1, sn2 <- vector(mode = "numeric", length = ncol(s1)),
-          sn3 <- vector(mode = "numeric", length = ncol(s1))
-        )
+        s1 <- rbind(s1, sn2 <- vector(mode = "numeric", length = ncol(s1)), sn3 <- vector(mode = "numeric", length = ncol(s1)))
         FAnum <- FAnum + 2
       }
       if (FAnum == 2) {
         s1 <- rbind(s1, sn3 <- vector(mode = "numeric", length = ncol(s1)))
         FAnum <- FAnum + 1
       }
+
 
       #' label the matrix
       if (FAnum == 3) row.names(s1) <- c("FA1", "FA2", "FA3")
@@ -96,7 +99,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
       s1 <- rbind(s1, massofFAs)
       formula <- vector(mode = "numeric", length = ncol(s1))
       s1 <- rbind(s1, formula)
-      ## row.names(s1) <- c("FA1", "FA2","FA3", "massofFAs")
+      #' row.names(s1) <-c("FA1", "FA2","FA3", "massofFAs")
       for (i in 1:ncol(s1)) {
 
         #' for 3 FAs
@@ -105,7 +108,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
           FA_2 <- as.character((s1[2, i]))
           FA_3 <- as.character((s1[3, i]))
           s1["massofFAs", i] <- as.numeric((lookup_FA[FA_1, "FAmass"])) + as.numeric((lookup_FA[FA_2, "FAmass"])) + as.numeric((lookup_FA[FA_3, "FAmass"]))
-          ## determine the formula
+          #' determine the formula
           temp_carbon <- as.numeric((lookup_FA[FA_1, "FAcarbon"])) + as.numeric((lookup_FA[FA_2, "FAcarbon"])) + as.numeric((lookup_FA[FA_3, "FAcarbon"]))
           temp_doublebond <- as.numeric((lookup_FA[FA_1, "FAdoublebond"])) + as.numeric((lookup_FA[FA_2, "FAdoublebond"])) + as.numeric((lookup_FA[FA_3, "FAdoublebond"]))
           s1["formula", i] <- paste(lipidclass, "(", temp_carbon, ":", temp_doublebond, ")", sep = "")
@@ -120,7 +123,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
         s1["totalmass", i] <- as.numeric(s1["massofFAs", i]) + as.numeric(as.character(lookup_lipid_class[lipidclass, "headgroup_mass"])) - (as.numeric(lookup_lipid_class[lipidclass, "FA_number"]) * as.numeric(lookup_element["H", "mass"]))
       }
 
-      ## make rows for charged lipids masses
+      #' make rows for charged lipids masses
       protonated <- vector(mode = "numeric", length = ncol(s1))
       ammoniated <- vector(mode = "numeric", length = ncol(s1))
       sodiated <- vector(mode = "numeric", length = ncol(s1))
@@ -130,7 +133,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
       acetate <- vector(mode = "numeric", length = ncol(s1))
       s1 <- rbind(s1, protonated, ammoniated, sodiated, potassiated, deprotonated, chlorinated, acetate)
 
-      ## calculate charged lipids masses
+      #' calculate charged lipids masses
       for (i in 1:ncol(s1)) {
         s1["protonated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["H", "mass"])), digits = 4)
         s1["ammoniated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["NH4", "mass"])), digits = 4)
@@ -141,7 +144,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
         s1["acetate", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["CH3COO", "mass"])), digits = 4)
       }
 
-      ## make rows for rounded charged lipids masses
+      #' make rows for rounded charged lipids masses
       round.protonated <- vector(mode = "numeric", length = ncol(s1))
       round.ammoniated <- vector(mode = "numeric", length = ncol(s1))
       round.sodiated <- vector(mode = "numeric", length = ncol(s1))
@@ -151,7 +154,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
       round.acetate <- vector(mode = "numeric", length = ncol(s1))
       s1 <- rbind(s1, round.protonated, round.ammoniated, round.sodiated, round.potassiated, round.deprotonated, round.chlorinated, round.acetate)
 
-      ## calculate rounded charged lipids masses
+      #' calculate rounded charged lipids masses
       for (i in 1:ncol(s1)) {
         s1["round.protonated", i] <- round(as.numeric(s1["protonated", i]), digits = rounder)
         s1["round.ammoniated", i] <- round(as.numeric(s1["ammoniated", i]), digits = rounder)
@@ -170,6 +173,7 @@ makelibrary <- function(ionisation_mode, lookup_lipid_class, lookup_FA,
 
 #' ========================================================================
 #' wl-23-03-2018, Fri: debug and tidy up
+#' wl-21-05-2019, Tue: same as massPix?
 deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
                         spectra = spectra) {
   C13_1 <- 1.003355
@@ -238,6 +242,7 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
 #' wl-23-03-2018, Fri: Debug and tidy up.
 #' Notes: No ionisation mode control inside the function. Use ionisation
 #'        mode to control 'adducts' outside this function.
+#' wl-21-05-2019, Tue: same as massPix?
 annotating <- function(deisotoped,
                        adducts = c(H = T, NH4 = F, Na = T, K = F, dH = F, Cl = F, OAc = F),
                        ppm.annotate = 10, dbase) {

@@ -375,7 +375,7 @@ dbase <- makelibrary(sel.class,
   fixed = F, fixed_FA, lookup_lipid_class,
   lookup_FA, lookup_element
 )
-#' wl-15-03-2018: 'fixed-FA' will be one of 'FA_expt'.
+#' wl-15-03-2018: 'fixed_FA' will be one of 'FA_expt'.
 
 ## ==== XCMS ====
 
