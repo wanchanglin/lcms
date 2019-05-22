@@ -1,5 +1,3 @@
-#' wl-12-03-2018, Mon: commence
-#' wl-21-05-2019, Tue: re-take 'makelibrary' from 'massPix'
 
 #' ========================================================================
 #' wl-21-05-2019, Tue: take this function from 'massPix' and remove 
@@ -173,7 +171,7 @@ makelibrary <- function(ionisation_mode, fixed = F, fixed_FA,
 
 #' ========================================================================
 #' wl-23-03-2018, Fri: debug and tidy up
-#' wl-21-05-2019, Tue: same as massPix?
+#' wl-21-05-2019, Tue: different from massPix
 deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
                         spectra = spectra) {
   C13_1 <- 1.003355
@@ -224,7 +222,9 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
   allpeaks <- as.data.frame(spectra)
   deisotoped <- allpeaks[(grep("\\[M\\+", allpeaks$isotope, invert = T)), ]
   isotopes <- allpeaks[(grep("\\[M\\+", allpeaks$isotope, invert = F)), ]
-  results <- list(allpeaks, deisotoped, isotopes)
+
+  results <- list(allpeaks = allpeaks, deisotoped = deisotoped, isotopes = isotopes)
+
   summary <- paste(length(as.vector(deisotoped$mz.obs)),
     "monoisotopic peaks retained and",
     length(as.vector(isotopes$mz.obs)),
@@ -234,26 +234,33 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     sep = " "
   )
   print(summary)
+  #' return(results)
 
   return(deisotoped)
 }
 
 #' ========================================================================
 #' wl-23-03-2018, Fri: Debug and tidy up.
-#' Notes: No ionisation mode control inside the function. Use ionisation
-#'        mode to control 'adducts' outside this function.
-#' wl-21-05-2019, Tue: same as massPix?
-annotating <- function(deisotoped,
-                       adducts = c(H = T, NH4 = F, Na = T, K = F, dH = F, Cl = F, OAc = F),
+#' wl-21-05-2019, Tue: almost same as massPix
+annotating <- function(ionisation_mode, deisotoped,
+                       #' adducts = c(H = T, NH4 = F, Na = T, K = F, dH = F, Cl = F, OAc = F),
                        ppm.annotate = 10, dbase) {
-  print("Starting annotation")
+  cat("Starting annotation")
+
   d.finalmz <- as.vector(deisotoped$mz.obs)
+
   s1 <- dbase
   spectra <- cbind(round(as.numeric(d.finalmz), digits = 3), d.finalmz)
   combined <- vector()
   sel.adducts <- vector()
   index <- 13 # offset to search only rounded masses in library
 
+  if (ionisation_mode == "positive") {
+    adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
+  }
+  if (ionisation_mode == "negative") {
+    adducts <- c(H = F, NH4 = F, Na = F, K = F, dH = T, Cl = T, OAc = F)
+  }
   for (a in 1:length(adducts)) {
     if (adducts[a] == T) sel.adducts <- c(sel.adducts, index + a)
   }
@@ -272,7 +279,7 @@ annotating <- function(deisotoped,
         row <- sel.adducts[row]
 
         #' determine the adduct that was matched, summarising match information from library for matched mass (as 'data')
-        ## determine which adduct
+        #' determine which adduct
         if (row == "14") {
           adduct <- "protonated"
           name.adduct <- "H"
@@ -304,14 +311,14 @@ annotating <- function(deisotoped,
 
         a.ppm <- round(abs(((as.numeric(spectra[i, 2]) - as.numeric(s1[adduct, col])) / as.numeric(spectra[i, 2])) * 1000000), digits = 1)
 
-        ## make vector with summary of match and paired match
+        #' make vector with summary of match and paired match
         data <- c(
           s1[row, col], s1[adduct, col], spectra[i, 2], a.ppm,
           s1["formula", col], name.adduct, s1["protonated", col],
           s1["FA1", col], s1["FA2", col], s1["FA3", col]
         )
 
-        ## make matrix of search results
+        #' make matrix of search results
         combined <- rbind(combined, unlist(data, use.names = F))
       }
     }
@@ -352,96 +359,3 @@ annotating <- function(deisotoped,
   }
 }
 
-#' ========================================================================
-#' peakTable from 'xcms'
-#' wl-20-03-2018, Tue: Note that the dot arguments sgould be 'groupval'
-#' Use 'peakTable' directly.
-#' peaklist  <- peakTable(xset,method="maxint", value="into", intensity="maxo")
-setMethod("peakTable", "xcmsSet", function(object, filebase = character(), ...) {
-  if (length(sampnames(object)) == 1) {
-    return(object@peaks)
-  }
-
-  if (nrow(object@groups) < 1) {
-    stop("First argument must be an xcmsSet with group information or contain only one sample.")
-  }
-
-  groupmat <- groups(object)
-
-
-  if (!"value" %in% names(list(...))) {
-    ts <- data.frame(cbind(groupmat, groupval(object, value = "into", ...)), row.names = NULL)
-  } else {
-    ts <- data.frame(cbind(groupmat, groupval(object, ...)), row.names = NULL)
-  }
-
-  cnames <- colnames(ts)
-
-  if (cnames[1] == "mzmed") {
-    cnames[1] <- "mz"
-  } else {
-    stop("mzmed column missing")
-  }
-  if (cnames[4] == "rtmed") {
-    cnames[4] <- "rt"
-  } else {
-    stop("mzmed column missing")
-  }
-
-  colnames(ts) <- cnames
-
-  if (length(filebase)) {
-    write.table(ts, paste(filebase, ".tsv", sep = ""),
-      quote = FALSE,
-      sep = "\t", col.names = NA
-    )
-  }
-
-  ts
-})
-
-#' =========================================================================
-#' Create complete feature table from CAMERA
-#' xs     - xcmsSet object
-#' method - groupval parameter method
-#' value  - groupval parameter method
-#' ------------------------------------------------------------------
-#' wl-15-05-2019, Wed: get peak list after annotation by CAMERA.
-#' Note: need the original mzML files
-#' library(CAMERA)
-#' xsa         <- annotate(xset, cor_eic_th=0)
-#' peaklist.1  <- getPeaklist(xsa)
-#' or get peak list directly from CAMERA's hidden function
-#' peaklist.2 <- CAMERA:::getPeaks_selection(xset)
-getPeaks_selection <- function(xs, method = "medret", value = "into") {
-  if (!class(xs) == "xcmsSet") {
-    stop("Parameter xs is no xcmsSet object\n")
-  }
-
-  #' Testing if xcmsSet is grouped
-  if (nrow(xs@groups) > 0 && length(xs@filepaths) > 1) {
-    #' get grouping information
-    groupmat <- groups(xs)
-    #' generate data.frame for peaktable
-    ts <- data.frame(cbind(groupmat, groupval(xs, method = method, value = value)), row.names = NULL)
-    ## rename column names
-    cnames <- colnames(ts)
-    if (cnames[1] == "mzmed") {
-      cnames[1] <- "mz"
-    } else {
-      stop("Peak information ?!?")
-    }
-    if (cnames[4] == "rtmed") {
-      cnames[4] <- "rt"
-    } else {
-      stop("Peak information ?!?")
-    }
-    colnames(ts) <- cnames
-  } else if (length(sampnames(xs)) == 1) { # Contains only one sample?
-    ts <- xs@peaks
-  } else {
-    stop("First argument must be a xcmsSet with group information or contain only one sample.")
-  }
-
-  return(as.matrix(ts))
-}

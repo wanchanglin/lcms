@@ -7,12 +7,16 @@
 #' wl-26-03-2018, Mon: Minor changes
 #' wl-17-05-2019, Fri: modification for Galaxy
 #' wl-21-05-2019, Tue: use 'makelibrary' from 'massPix'
+#' wl-22-05-2019, Wed:
+#'   - compare deisotpe and annotate with 'massPix'
+#'   - move adducts into annotate function
+#'   - run in interactive mode 
 
 ## ==== General settings ====
 rm(list = ls(all = T))
 
 #' flag for command-line use or not. If false, only for debug interactively.
-com_f <- F
+com_f <- T
 
 #' galaxy will stop even if R has warning message
 options(warn = -1) #' disable R warning. Turn back: options(warn=0)
@@ -68,62 +72,64 @@ if (com_f) {
         dest = "verbose", help = "Print little output"
       ),
 
-      #' -------------------------------------------------------------------
-      #' input
-      make_option("--mzxml_file",
-        type = "character",
-        help = "mzXML/ mzML file directory or full file list seperated by comma"
-      ),
-      make_option("--targ_file",
-        type = "character",
-        help = "Lipid target list with columns of m/z and lipid name"
-      ),
-      make_option("--samp_name",
-        type = "character", default = "",
-        help = "Sample names. Default is the names of mz XML file"
-      ),
-      make_option("--rt_low",
-        type = "double", default = 20.0,
-        help = "Start time"
-      ),
-      make_option("--rt_high",
-        type = "double", default = 60.0,
-        help = "End time"
-      ),
-      make_option("--mz_low",
-        type = "double", default = 200.0,
-        help = "Start m/z"
-      ),
-      make_option("--mz_high",
-        type = "double", default = 1200.0,
-        help = "End m/z"
-      ),
-      make_option("--hwidth",
-        type = "double", default = 0.01,
-        help = "m/z window size/height for peak finder"
+      #' processing mzML or mzXML
+      make_option("--process", type = "logical", default = TRUE,
+        help = "Select TRUE to process mzML or mzXML files use xcms
+                otherwise the processed xset R data file"
       ),
 
-      #' output files (Excel)
-      make_option("--sign_file",
-        type = "character", default = "signals.tsv",
-        help = "Save peak signals (peak table)"
+      #' input files
+      make_option("--mzxml_file",
+        type = "character",
+        help = "mzXML/mzML file directory or full file list seperated by comma"
       ),
-      make_option("--devi",
-        type = "logical", default = TRUE,
-        help = "Return m/z deviation results or not"
+      make_option("--xset_file",
+        type = "character",
+        help = "xcmsSet R data file"
       ),
-      make_option("--devi_file",
-        type = "character", default = "deviations.tsv",
-        help = "Save m/z deviations"
+
+      #' process raw data with mzML or mzXML format and get xcmsSet
+      make_option("--FWHM", type = "integer", default = 3,
+        help = "approximate FWHM (in seconds) of chromatographic peaks"
       ),
-      make_option("--indi",
-        type = "logical", default = TRUE,
-        help = "Return each sample's signal and m/z deviation or not"
+      make_option("--snthresh", type = "integer", default = 5,
+        help = "the signal to noise threshold"
       ),
-      make_option("--indi_file",
-        type = "character", default = "sam_indi.xlsx",
-        help = "Save individual sample's signal and m/z deviation in Excel"
+      make_option("--minfrac", type = "double", default = 0.25, 
+        help = "minimum fraction of samples necessary for it to be 
+                a valid peak group"
+      ),        
+      make_option("--profmethod", type = "character", default = "binlin", 
+        help = "use either 'bin' (better for centroid, default), 
+                'binlin' (better for profile)"
+      ),            
+      
+      #' make library
+      make_option("--ionisation_mode", type = "character", default = "positive"),
+      make_option("--fixed", type = "logical", default = FALSE),
+      make_option("--fixed_FA", type = "double", default = 16),
+      
+      #' deisotope
+      make_option("--ppm", type = "integer", default = 5),
+      make_option("--no_isotopes", type = "integer", default = 2),
+      make_option("--prop_1", type = "double", default = 0.9),
+      make_option("--prop_2", type = "double", default = 0.5),
+
+      #' annotate
+      make_option("--ppm_annotate", type = "integer", default = 15),
+      
+
+      #' output files 
+      make_option("--peak_out",
+        type = "character", default = "peak.tsv",
+        help = "Save annotated peak table"
+      ),
+      make_option("--rdata", type = "logical", default = TRUE),
+      make_option("--rdata_out",
+        type = "character", default = "xset.rdata",
+        help = "xcmsSet R file after XCMS on mzML or mzXML files."
       )
+
     )
 
   opt <- parse_args(
@@ -135,67 +141,74 @@ if (com_f) {
   tool_dir <- "C:/R_lwc/lcms/"         #' for windows
   #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
-    #' input
+    process = T,
 
-     #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_005.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_006.mzML"),
-     #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_007.mzML"),
-     #'                    sep = ","
-     #'                    ),
+    #' input files
+    #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_005.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_006.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_007.mzML"),
+    #'                    sep = ","
+    #'                    ),
     
     mzxml_file = paste(paste0(tool_dir, "test-data/lcms_pos")),
+    xset_file = paste0(tool_dir, "test-data/xset_pos.rdata"),
+
+    #' process raw data with mzML or mzXML format and get xcmsSet
+    FWHM = 3,              # approximate FWHM (in seconds) of chromatographic peaks
+    snthresh = 5,          # the signal to noise threshold
+    minfrac = 0.25,        # minimum fraction of samples necessary for it to be a valid peak group
+    profmethod = "binlin", # use either "bin" (better for centroid, default), "binlin" (better for profile)
 
     #' make library
-    ionisation_mode = "positive",
+    ionisation_mode = "positive", # either "positive" or "negative"
     fixed = FALSE,
     fixed_FA = 16,
 
-    #' parameters for 'xcmsSet' (based on Zoe Hall's setting)
-    FWHM = 3, # set approximate FWHM (in seconds) of chromatographic peaks
-    snthresh = 5, # set the signal to noise threshold
-    #' minimum fraction of samples necessary for it to be a valid peak group
-    minfrac = 0.25,
-    #' use either "bin" (better for centroid, default), "binlin" (better for
-    #' profile)
-    profmethod = "binlin",
+    #' deisotope
+    ppm = 5,
+    no_isotopes = 2,
+    prop_1 = 0.9,
+    prop_2 = 0.5,
 
-    ppm.annotate = 15, # choose ppm for annotations
-    ionisation_mode = "positive", # either "positive" or "negative"
-    adducts = c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
+    #' annotate
+    ppm.annotate = 15,
 
     #' Output
-    #' sign_file = paste0(tool_dir, "test-data/res_dimsp/signals.tsv"),
-    #' devi = TRUE,
-    #' devi_file = paste0(tool_dir, "test-data/res_dimsp/deviations.tsv"),
-    #' indi = TRUE,
-    #' indi_file = paste0(tool_dir, "test-data/res_dimsp/individuals.xlsx")
+    peak_out = paste0(tool_dir, "test-data/peak.tsv"),
+    rdata = TRUE,
+    rdata_out = paste0(tool_dir, "test-data/xset_pos_deb.rdata") 
   )
 }
-
-lib_dir <- paste0(tool_dir, "libraries/")
+#' opt
 
 suppressPackageStartupMessages({
   source(paste0(tool_dir, "lcms_func.R"))
 })
 
-#' --------------------------------------------------------------------
-#' if (T) {
-#'   #' wl-23-03-2018, Fri: from 'annotate' of 'massPix'
-#'   if (ionisation_mode == "positive") {
-#'     adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
-#'   } else {
-#'     adducts <- c(H = F, NH4 = F, Na = F, K = F, dH = T, Cl = T, OAc = F)
-#'   }
-#' } else {
-#'   #' wl-23-03-2018, Fri: this the default value for 'annotating'
-#'   adducts <- c(H = T, NH4 = T, Na = T, K = F, dH = F, Cl = F, OAc = F)
-#' }
+## ==== Pre-processing ====
 
-## ==== Main process ====
+#' library files
+lib_dir <- paste0(tool_dir, "libraries/")
+
+read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",", header = T)
+lookup_FA <- read[, 2:4]
+row.names(lookup_FA) <- read[, 1]
+
+read <- read.csv(paste(lib_dir, "lib_class.csv", sep = "/"), sep = ",", header = T)
+lookup_lipid_class <- read[, 2:3]
+row.names(lookup_lipid_class) <- read[, 1]
+
+read <- read.csv(paste(lib_dir, "lib_element.csv", sep = "/"), sep = ",", header = T)
+lookup_element <- read[, 2:3]
+row.names(lookup_element) <- read[, 1]
+
+read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", header = T)
+lookup_mod <- read[, 2:ncol(read)]
+row.names(lookup_mod) <- read[, 1]
 
 #' process multiple input files seperated by comma
 #' wl-04-03-2019, Mon: add file directory option. Note that it is not for
@@ -208,9 +221,11 @@ if (dir.exists(opt$mzxml_file)) {   ## file directory
   opt$mzxml_file <- str_vec(opt$mzxml_file)
 } 
 
-#' ========================================================================
-#' Run xcms
-if (F) {
+## ==== Main process ====
+
+#' -----------------------------------------------------------------------
+#' XCMS
+if (opt$process) {
   xset <- xcmsSet(opt$mzxml_file,
     method = "matchedFilter", step = 0.1,
     sigma = opt$FWHM / 2.3548, snthresh = opt$snthresh,
@@ -231,13 +246,66 @@ if (F) {
   xset <- fillPeaks(xset)
   #' Note: need mzML files to fill in missing peaks
 
-  save(xset, file = "./test-data/xset_pos.RData")
+  if (opt$rdata) {
+    save(xset, file = opt$rdata_out)
+  }  
 } else {
-  load("./test-data/xset_pos.RData")
+  load(opt$xset_file)
 }
 
-#' ========================================================================
-#' Get peak lists.
+#' Peak lists. (peak area: value = "into"; peak height: value = "maxo")
+peaklist <- peakTable(xset, method = "maxint", value = "into", 
+                      intensity = "maxo")    #' peak area 
+#' round mz and rt, and kepp them 
+peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
+peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks))
+peaklist <- peaklist[,-3]   #' remove mzml directory name
+
+#' -----------------------------------------------------------------------
+#' Deisotoping
+
+#' wl-21-05-2019, Tue: should take average of all samples.
+spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
+spectra <- cbind(spectra, "", "")
+colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+
+deisotoped <- deisotoping(ppm = opt$ppm, no_isotope = opt$no_isotopes, 
+                          prop.1 = opt$prop.1, prop.2 = opt$prop.2, 
+                          spectra = spectra)
+
+#' -----------------------------------------------------------------------
+#' Annotating
+
+#' make library
+dbase <- makelibrary(
+  ionisation_mode = opt$ionisation_mode,
+  fixed = opt$fixed,
+  fixed_FA = opt$fixed_FA,
+  lookup_lipid_class = lookup_lipid_class,
+  lookup_FA = lookup_FA,
+  lookup_element = lookup_element
+)
+
+#' annotating
+annotated <- annotating(opt$ionisation_mode, deisotoped, opt$ppm.annotate, dbase)
+
+#' -----------------------------------------------------------------------
+#' update peaklist
+indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
+tmp <- peaklist[indices, ]
+rownames(tmp) <- NULL
+final_peak <- cbind(annotated, tmp)
+
+#' save results
+write.table(final_peak, file = opt$peak_out, sep = "\t", row.names = F)
+#' write.csv(final_peak, file="./test-data/peak.csv", row.names= F, quote=F)
+#' save(final_peak, deisotoped, annotated, file = "./test-data/peak.RData")
+
+#' normalising based on TIC
+
+
+## ==== DEBUG: get peaklist using 'goupval' from 'xcms' ====
+
 if (F){
   #' peakmat <- xcms::peaks(xset)
   #' Note: two arguments in 'groupval', 'value' and 'intensity' will use this
@@ -256,114 +324,109 @@ if (F){
   peaklist <- data.frame(cbind(grpmat, values), row.names = NULL)
   colnames(peaklist) <- gsub("mzmed", "mz", colnames(peaklist))
   colnames(peaklist) <- gsub("rtmed", "rt", colnames(peaklist))
-} else {
-  #' peak area or height?
-  peaklist <- peakTable(xset, method = "maxint", value = "into", 
-                        intensity = "maxo") #' peak area 
-  #' peaklist <- peakTable(xset, method = "maxint", value = "maxo", 
-  #'                       intensity = "maxo") #' peak height
-}
-#' round mz and rt
-peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
-#' keep only mz and rt in peak list
-#' wl-13-05-2019, Mon: need to change 
-peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks))
-peaklist <- peaklist[,-3]   #' remove mzml directory name
+} 
 
+## ==== DEBUG: peakTable from 'xcms' ====
 
-#' =======================================================================
-#' Deisotoping
-
-#' wl-21-05-2019, Tue: should take average of all samples.
-spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
-spectra <- cbind(spectra, "", "")
-colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
-
-deisotoped <- deisotoping(ppm = 5, no_isotopes = 2, prop.1 = 0.9, 
-                          prop.2 = 0.5, spectra = spectra)
-
-#' ========================================================================
-#' Annotating
-
-#' library files
-read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",", header = T)
-lookup_FA <- read[, 2:4]
-row.names(lookup_FA) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_class.csv", sep = "/"), sep = ",", header = T)
-lookup_lipid_class <- read[, 2:3]
-row.names(lookup_lipid_class) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_element.csv", sep = "/"), sep = ",", header = T)
-lookup_element <- read[, 2:3]
-row.names(lookup_element) <- read[, 1]
-
-read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", header = T)
-lookup_mod <- read[, 2:ncol(read)]
-row.names(lookup_mod) <- read[, 1]
-
-#' make library
-dbase <- makelibrary(
-  ionisation_mode = opt$ionisation_mode,
-  fixed = opt$fixed,
-  fixed_FA = opt$fixed_FA,
-  lookup_lipid_class = lookup_lipid_class,
-  lookup_FA = lookup_FA,
-  lookup_element = lookup_element
-)
-
-#' annotating
-annotated <- annotating(deisotoped, opt$adducts, opt$ppm.annotate, dbase)
-
-#' update peaklist
-indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
-tmp <- peaklist[indices, ]
-rownames(tmp) <- NULL
-final_peak <- cbind(annotated, tmp)
-
-#' =======================================================================
-#' save results
-save(final_peak, deisotoped, annotated, file = "./test-data/peak.RData")
-
-write.csv(final_peak,
-  file = "./test-data/lc_ms_data.csv",
-  row.names = FALSE, quote = FALSE
-)
-
-#' write.table(final_peak, file="./test-data/lc_ms_data.tsv", sep = "\t",
-#'             row.names = FALSE, quote = FALSE)
-
-
-## ==== Some original codes ====
-#' library(reshape2) ## for colsplit
 if (F) {
+  #' ------------------------------------------------------------------
+  #' wl-20-03-2018, Tue: Use 'peakTable' directly.
+  peaklist  <- peakTable(xset, method="maxint", value="into", intensity="maxo")
 
-  #' Deisotoping
-  names <- groupnames(xset, rtdec = 2, mzdec = 4)
-  names <- substr(names, 2, 18)
-  out <- groupval(xset, method = "maxint", value = "into", intensity = "maxo")
-  rownames(out) <- names
-  names_split <- colsplit(as.vector(as.character(names)), "T", c("mz", "RT"))
+  #' =====================================================================
+  #' wl-20-03-2018, Tue: Note that the dot arguments sgould be 'groupval'
+  setMethod("peakTable", "xcmsSet", function(object, filebase = character(), ...) {
+    if (length(sampnames(object)) == 1) {
+      return(object@peaks)
+    }
 
-  spectra <- cbind(names_split$mz, out[, 1], "", "")
-  colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+    if (nrow(object@groups) < 1) {
+      stop("First argument must be an xcmsSet with group information or contain only one sample.")
+    }
 
-  deisotoped <- deisotoping(
-    ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
-    spectra = spectra
-  )
+    groupmat <- groups(object)
 
-  indices <- match(rownames(deisotoped), rownames(out))
-  deisotoped_out <- out[indices, ]
 
-  names_deiso <- rownames(deisotoped_out)
-  names_deiso <- colsplit(as.vector(as.character(names_deiso)), "T", c("mz", "RT"))
-  deisotoped_out <- cbind(
-    names_deiso$mz, names_deiso$RT,
-    deisotoped_out[, 1:ncol(deisotoped_out)]
-  )
+    if (!"value" %in% names(list(...))) {
+      ts <- data.frame(cbind(groupmat, groupval(object, value = "into", ...)), row.names = NULL)
+    } else {
+      ts <- data.frame(cbind(groupmat, groupval(object, ...)), row.names = NULL)
+    }
 
-  #' Annotating
-  annotated <- annotating(deisotoped, adducts, ppm.annotate, dbase)
-  final_out <- cbind(annotated, deisotoped_out)
+    cnames <- colnames(ts)
+
+    if (cnames[1] == "mzmed") {
+      cnames[1] <- "mz"
+    } else {
+      stop("mzmed column missing")
+    }
+    if (cnames[4] == "rtmed") {
+      cnames[4] <- "rt"
+    } else {
+      stop("mzmed column missing")
+    }
+
+    colnames(ts) <- cnames
+
+    if (length(filebase)) {
+      write.table(ts, paste(filebase, ".tsv", sep = ""),
+        quote = FALSE,
+        sep = "\t", col.names = NA
+      )
+    }
+
+    ts
+  })
+}
+
+## ==== DEBUG: getPeaklist from 'CAMERA' ====
+
+if (F) {
+  #' ------------------------------------------------------------------
+  #' wl-15-05-2019, Wed: get peak list after annotation by CAMERA.
+  #' Note: need the original mzML files
+  library(CAMERA)
+  xsa         <- annotate(xset, cor_eic_th=0)
+  peaklist.1  <- getPeaklist(xsa)
+  #' or get peak list directly from CAMERA's hidden function
+  peaklist.2 <- CAMERA:::getPeaks_selection(xset)
+
+  #' =====================================================================
+  #' Create complete feature table from CAMERA
+  #' xs     - xcmsSet object
+  #' method - groupval parameter method
+  #' value  - groupval parameter method
+  getPeaks_selection <- function(xs, method = "medret", value = "into") {
+    if (!class(xs) == "xcmsSet") {
+      stop("Parameter xs is no xcmsSet object\n")
+    }
+
+    #' Testing if xcmsSet is grouped
+    if (nrow(xs@groups) > 0 && length(xs@filepaths) > 1) {
+      #' get grouping information
+      groupmat <- groups(xs)
+      #' generate data.frame for peaktable
+      ts <- data.frame(cbind(groupmat, groupval(xs, method = method, value = value)), row.names = NULL)
+      ## rename column names
+      cnames <- colnames(ts)
+      if (cnames[1] == "mzmed") {
+        cnames[1] <- "mz"
+      } else {
+        stop("Peak information ?!?")
+      }
+      if (cnames[4] == "rtmed") {
+        cnames[4] <- "rt"
+      } else {
+        stop("Peak information ?!?")
+      }
+      colnames(ts) <- cnames
+    } else if (length(sampnames(xs)) == 1) { # Contains only one sample?
+      ts <- xs@peaks
+    } else {
+      stop("First argument must be a xcmsSet with group information or contain only one sample.")
+    }
+
+    return(as.matrix(ts))
+  }
+
 }
