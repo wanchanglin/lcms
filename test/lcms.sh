@@ -5,6 +5,6 @@
 Rscript --vanilla ../lcms.R \
   --process TRUE \
   --mzxml_file "../test-data/lcms_pos" \
-  --peak_out "../test-data/peak.tsv" \
+  --peak_out "../test-data/peak_deb.tsv" \
   --rdata TRUE\
   --rdata_out "../test-data/xset_pos_deb.rdata"

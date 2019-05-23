@@ -16,7 +16,7 @@
 rm(list = ls(all = T))
 
 #' flag for command-line use or not. If false, only for debug interactively.
-com_f <- T
+com_f <- F
 
 #' galaxy will stop even if R has warning message
 options(warn = -1) #' disable R warning. Turn back: options(warn=0)
@@ -138,8 +138,8 @@ if (com_f) {
   )
   print(opt)
 } else {
-  tool_dir <- "C:/R_lwc/lcms/"         #' for windows
-  #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
+  #' tool_dir <- "C:/R_lwc/lcms/"         #' for windows
+  tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
     process = T,
 
@@ -178,7 +178,7 @@ if (com_f) {
     ppm.annotate = 15,
 
     #' Output
-    peak_out = paste0(tool_dir, "test-data/peak.tsv"),
+    peak_out = paste0(tool_dir, "test-data/peak_pos_deb.tsv"),
     rdata = TRUE,
     rdata_out = paste0(tool_dir, "test-data/xset_pos_deb.rdata") 
   )

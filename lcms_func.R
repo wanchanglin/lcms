@@ -245,7 +245,7 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
 annotating <- function(ionisation_mode, deisotoped,
                        #' adducts = c(H = T, NH4 = F, Na = T, K = F, dH = F, Cl = F, OAc = F),
                        ppm.annotate = 10, dbase) {
-  cat("Starting annotation")
+  cat("Starting annotation\n")
 
   d.finalmz <- as.vector(deisotoped$mz.obs)
 
