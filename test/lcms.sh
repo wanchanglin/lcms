@@ -3,8 +3,9 @@
 # wl-25-03-2019, Mon: add output directory
 
 Rscript --vanilla ../lcms.R \
-  --process TRUE \
+  --process F \
   --mzxml_file "../test-data/lcms_pos" \
-  --peak_out "../test-data/peak_deb.tsv" \
+  --xset_file "../test-data/xset_pos.rdata" \
+  --peak_out "../test-data/peak_tmp.tsv" \
   --rdata TRUE\
-  --rdata_out "../test-data/xset_pos_deb.rdata"
+  --rdata_out "../test-data/xset_tmp.rdata"
