@@ -12,6 +12,7 @@
 #'   - move adducts into annotate function
 #'   - run in interactive mode 
 #' wl-23-05-2019, Thu: Fix some bugs.
+#' wl-24-05-2019, Fri: debug
 
 ## ==== General settings ====
 rm(list = ls(all = T))
@@ -75,8 +76,8 @@ if (com_f) {
 
       #' processing mzML or mzXML
       make_option("--process", type = "logical", default = TRUE,
-        help = "Select TRUE to process mzML or mzXML files use xcms
-                otherwise the processed xset R data file"
+        help = "Select TRUE to process mzML or mzXML files by xcms
+                otherwise use the processed xset R data file"
       ),
 
       #' input files
@@ -86,22 +87,22 @@ if (com_f) {
       ),
       make_option("--xset_file",
         type = "character",
-        help = "xcmsSet R data file"
+        help = "xcmsSet R data file produced by xcms"
       ),
 
       #' process raw data with mzML or mzXML format and get xcmsSet
       make_option("--FWHM", type = "integer", default = 3,
-        help = "approximate FWHM (in seconds) of chromatographic peaks"
+        help = "Approximate FWHM (in seconds) of chromatographic peaks"
       ),
       make_option("--snthresh", type = "integer", default = 5,
-        help = "the signal to noise threshold"
+        help = "The signal to noise threshold"
       ),
       make_option("--minfrac", type = "double", default = 0.25, 
-        help = "minimum fraction of samples necessary for it to be 
+        help = "Minimum fraction of samples necessary for it to be 
                 a valid peak group"
       ),        
       make_option("--profmethod", type = "character", default = "binlin", 
-        help = "use either 'bin' (better for centroid, default), 
+        help = "Use either 'bin' (better for centroid, default), or 
                 'binlin' (better for profile)"
       ),            
       
@@ -122,7 +123,7 @@ if (com_f) {
       #' output files 
       make_option("--peak_out",
         type = "character", default = "peak.tsv",
-        help = "Save annotated peak table"
+        help = "Annotated peak table"
       ),
       make_option("--rdata", type = "logical", default = TRUE),
       make_option("--rdata_out",
@@ -138,33 +139,30 @@ if (com_f) {
   )
   print(opt)
 } else {
-  tool_dir <- "C:/R_lwc/lcms/"         #' for windows
-  #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
+  #' tool_dir <- "C:/R_lwc/lcms/"         #' for windows
+  tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
-    process = F,
+    process = T,
 
     #' input files
-    #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_005.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_006.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_007.mzML"),
-    #'                    sep = ","
-    #'                    ),
+    mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
+                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
+                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
+                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
+                       sep = ","
+                       ),
     
-    mzxml_file = paste(paste0(tool_dir, "test-data/lcms_pos")),
-    xset_file = paste0(tool_dir, "test-data/xset_pos.rdata"),
+    #' mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
+    #' xset_file = paste0(tool_dir, "test-data/xset_neg.rdata"),
 
     #' process raw data with mzML or mzXML format and get xcmsSet
-    FWHM = 3,              # approximate FWHM (in seconds) of chromatographic peaks
-    snthresh = 5,          # the signal to noise threshold
-    minfrac = 0.25,        # minimum fraction of samples necessary for it to be a valid peak group
-    profmethod = "binlin", # use either "bin" (better for centroid, default), "binlin" (better for profile)
+    FWHM = 3,              
+    snthresh = 5,
+    minfrac = 0.25,
+    profmethod = "binlin",
 
     #' make library
-    ionisation_mode = "positive", # either "positive" or "negative"
+    ionisation_mode = "negative", 
     fixed = FALSE,
     fixed_FA = 16,
 
@@ -178,9 +176,9 @@ if (com_f) {
     ppm_annotate = 15,
 
     #' Output
-    peak_out = paste0(tool_dir, "test-data/peak_pos_deb.tsv"),
+    peak_out = paste0(tool_dir, "test-data/peak_neg_deb.tsv"),
     rdata = TRUE,
-    rdata_out = paste0(tool_dir, "test-data/xset_pos_deb.rdata") 
+    rdata_out = paste0(tool_dir, "test-data/xset_neg_deb.rdata") 
   )
 }
 #' opt
@@ -269,35 +267,35 @@ spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
 spectra <- cbind(spectra, "", "")
 colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
 
-deisotoped <- deisotoping(ppm = opt$ppm, no_isotope = opt$no_isotopes, 
-                          prop.1 = opt$prop_1, prop.2 = opt$prop_2, 
-                          spectra = spectra)
+deisotoped <- deisotoping(ppm        = opt$ppm,
+                          no_isotope = opt$no_isotopes,
+                          prop.1     = opt$prop_1,
+                          prop.2     = opt$prop_2,
+                          spectra    = spectra)
 
 #' -----------------------------------------------------------------------
 #' Annotating
 
 #' make library
-dbase <- makelibrary(
-  ionisation_mode = opt$ionisation_mode,
-  fixed = opt$fixed,
-  fixed_FA = opt$fixed_FA,
-  lookup_lipid_class = lookup_lipid_class,
-  lookup_FA = lookup_FA,
-  lookup_element = lookup_element
-)
+dbase <- makelibrary(ionisation_mode    = opt$ionisation_mode,
+                     fixed              = opt$fixed,
+                     fixed_FA           = opt$fixed_FA,
+                     lookup_lipid_class = lookup_lipid_class,
+                     lookup_FA          = lookup_FA,
+                     lookup_element     = lookup_element)
 
 #' annotating
-annotated <- annotating(ionisation_mode = opt$ionisation_mode, 
-                        deisotoped = deisotoped,
-                        ppm.annotate = opt$ppm_annotate, 
-                        dbase = dbase)
+annotated <- annotating(ionisation_mode = opt$ionisation_mode,
+                        deisotoped      = deisotoped,
+                        ppm.annotate    = opt$ppm_annotate,
+                        dbase           = dbase)
 
 #' -----------------------------------------------------------------------
 #' update peaklist
-indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
-tmp <- peaklist[indices, ]
+indices       <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
+tmp           <- peaklist[indices, ]
 rownames(tmp) <- NULL
-final_peak <- cbind(annotated, tmp)
+final_peak    <- cbind(annotated, tmp)
 
 #' save results
 write.table(final_peak, file = opt$peak_out, sep = "\t", row.names = F)

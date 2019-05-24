@@ -219,11 +219,9 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     }
   }
 
-  allpeaks <- as.data.frame(spectra)
+  allpeaks   <- as.data.frame(spectra)
   deisotoped <- allpeaks[(grep("\\[M\\+", allpeaks$isotope, invert = T)), ]
-  isotopes <- allpeaks[(grep("\\[M\\+", allpeaks$isotope, invert = F)), ]
-
-  results <- list(allpeaks = allpeaks, deisotoped = deisotoped, isotopes = isotopes)
+  isotopes   <- allpeaks[(grep("\\[M\\+", allpeaks$isotope, invert = F)), ]
 
   summary <- paste(length(as.vector(deisotoped$mz.obs)),
     "monoisotopic peaks retained and",
@@ -234,6 +232,8 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     sep = " "
   )
   print(summary)
+
+  #' results <- list(allpeaks = allpeaks, deisotoped = deisotoped, isotopes = isotopes)
   #' return(results)
 
   return(deisotoped)
@@ -248,13 +248,12 @@ annotating <- function(ionisation_mode, deisotoped,
                        ppm.annotate = 10, dbase) {
   cat("Starting annotation\n")
 
-  d.finalmz <- as.vector(deisotoped$mz.obs)
-
-  s1 <- dbase
-  spectra <- cbind(round(as.numeric(d.finalmz), digits = 3), d.finalmz)
-  combined <- vector()
+  d.finalmz   <- as.vector(deisotoped$mz.obs)
+  s1          <- dbase
+  spectra     <- cbind(round(as.numeric(d.finalmz), digits = 3), d.finalmz)
+  combined    <- vector()
   sel.adducts <- vector()
-  index <- 13 # offset to search only rounded masses in library
+  index       <- 13 # offset to search only rounded masses in library
 
   if (ionisation_mode == "positive") {
     adducts <- c(H = T, NH4 = F, Na = T, K = T, dH = F, Cl = F, OAc = F)
@@ -266,40 +265,17 @@ annotating <- function(ionisation_mode, deisotoped,
     if (adducts[a] == T) sel.adducts <- c(sel.adducts, index + a)
   }
 
-
-  #' =========================
-  #' wl-23-05-2019, Thu: DEBUG: find bugs in nrow(result)
-  if (F) {
-    save(ionisation_mode, deisotoped, adducts, ppm.annotate, dbase, file="../test-data/tmp.rdata")
-    ind  <- NULL
-    for (i in 1:nrow(spectra)) {
-      i = 188
-      search <- as.numeric(spectra[i, 1])
-      offset <- (ppm.annotate * search) / 1000000
-      top    <- search + offset
-      bottom <- search - offset
-
-      tmp  <- s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top 
-
-      result <- which(s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top, 
-                      arr.ind = TRUE)
-      if (nrow(result) > 0) {
-        ind  <- c(ind,i)
-      }
-    }
-  }
-  #' =========================
-
   for (i in 1:nrow(spectra)) {
     search <- as.numeric(spectra[i, 1])
     offset <- (ppm.annotate * search) / 1000000
     top <- search + offset
     bottom <- search - offset
-    result <- which(s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top, arr.ind = TRUE)
+    result <- which(s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top, 
+                    arr.ind = TRUE)
 
     #' =========================
     #' wl-23-05-2019, Thu: famous R problem: 
-    #' Error in if (condition) { : argument is of length zero
+    #' Error in if (condition)  : argument is of length zero
     #' =========================
     #' if (nrow(result) > 0) {  
     if (length(result) > 0) {
@@ -308,7 +284,8 @@ annotating <- function(ionisation_mode, deisotoped,
         row <- result[j, "row"]
         row <- sel.adducts[row]
 
-        #' determine the adduct that was matched, summarising match information from library for matched mass (as 'data')
+        #' determine the adduct that was matched, summarising match 
+        #' information from library for matched mass (as 'data')
         #' determine which adduct
         if (row == "14") {
           adduct <- "protonated"
@@ -387,10 +364,7 @@ annotating <- function(ionisation_mode, deisotoped,
     print(summary)
 
     return(annotations[, 2])
-  }
-
-  #' wl-23-05-2019, Thu: should give exit code.
-  if (length(combined) == 0) {
+  } else { #' wl-23-05-2019, Thu: should give exit code.
     print("No annotations were made")
   }
 
