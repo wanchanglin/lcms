@@ -1,12 +1,16 @@
 #!/bin/bash
-# wl-01-11-2017, Wed: Rscript test code for Linux
-# wl-25-03-2019, Mon: add output directory
-# --xset_file "../test-data/xset_pos.rdata" \
+# wl-25-05-2019, Sat: use file names for mzxml_file
 
 Rscript --vanilla ../lcms.R \
   --process T \
-  --mzxml_file "../test-data/lcms_neg" \
-  --ionisation_mode "negative" \
-  --peak_out "../test-data/peak_tmp.tsv" \
+  --mzxml_file "../test-data/lcms_pos/ZH_190918_mann_liver_pos_001.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_002.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_003.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_004.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_005.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_006.mzML, \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_007.mzML" \
+  --ionisation_mode "positive" \
+  --peak_out "../test-data/peak_pos_fils.tsv" \
   --rdata TRUE\
-  --rdata_out "../test-data/xset_tmp.rdata"
+  --rdata_out "../test-data/xset_pos_file.rdata"
