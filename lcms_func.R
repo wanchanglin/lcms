@@ -2,9 +2,11 @@
 #' ========================================================================
 #' wl-21-05-2019, Tue: take this function from 'massPix' and remove 
 #'  'sel.class' argument
-makelibrary <- function(ionisation_mode, fixed = F, fixed_FA,
-                        lookup_lipid_class, lookup_FA, lookup_element) {
+makelibrary <- function(ionisation_mode = c("positive","negative"), 
+                        fixed = F, fixed_FA, lookup_lipid_class, 
+                        lookup_FA, lookup_element) {
   cat("\nMaking library of lipid masses...\n")
+  ionisation_mode <- match.arg(ionisation_mode)
   if (ionisation_mode == "positive") {
     sel.class <- c(
       T, # TG
@@ -368,6 +370,16 @@ annotating <- function(ionisation_mode, deisotoped,
     print("No annotations were made")
   }
 
+}
+
+#' ========================================================================
+#' wl-28-05-2019, Tue: normalisation based on TIC
+#'   x - numeric data matrix
+#'   dim - normalisation based on row (1) or column (2)
+norm_tic <- function(x, dim = 1) {
+  scale <- apply(x, dim, function(x) sum(x, na.rm = T))
+  scale <- scale/mean(scale, na.rm = T)
+  x <- sweep(x, dim, scale, "/")
 }
 
 ## ==== DEBUG: get peaklist using 'goupval' from 'xcms' ====

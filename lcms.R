@@ -13,6 +13,10 @@
 #'   - run in interactive mode 
 #' wl-23-05-2019, Thu: Fix some bugs.
 #' wl-24-05-2019, Fri: debug
+#' wl-28-05-2019, Tue: retcor
+#'  - 'retcor' consumes a large quantity of memory by 'profStep' and 
+#'    disable its plot.
+#'  - use average of all samples' intensity for deisotyping
 
 ## ==== General settings ====
 rm(list = ls(all = T))
@@ -139,20 +143,20 @@ if (com_f) {
   )
   print(opt)
 } else {
-  #' tool_dir <- "C:/R_lwc/lcms/"         #' for windows
-  tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
+  tool_dir <- "C:/R_lwc/lcms/"         #' for windows
+  #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
     process = T,
 
     #' input files
-    mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
-                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
-                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
-                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
-                       sep = ","
-                       ),
+    #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
+    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
+    #'                    sep = ","
+    #'                    ),
     
-    #' mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
+    mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
     #' xset_file = paste0(tool_dir, "test-data/xset_neg.rdata"),
 
     #' process raw data with mzML or mzXML format and get xcmsSet
@@ -234,8 +238,10 @@ if (opt$process) {
 
   #' corrects retention times
   xset <- retcor(xset, method = "obiwarp", profStep = 0.1, 
-                 plottype = "deviation")
+                 plottype = "none")  # "deviation"
   #' wl-15-03-2018, Thu: Possible memory problem?
+  #' wl-28-05-2019, Tue:  'profStep': Smaller steps yield more precision at
+  #'   the cost of greater memory usage. (from profStep-methods)
 
   xset <- group(xset, bw = 5, minfrac = opt$minfrac, mzwid = 0.025)
   #' lwc-05-11-2013: group has three methods: group.density (default),
@@ -262,10 +268,14 @@ peaklist <- peaklist[,-3]   #' remove mzml directory name
 #' -----------------------------------------------------------------------
 #' Deisotoping
 
-#' wl-21-05-2019, Tue: should take average of all samples.
-spectra <- as.matrix(peaklist[, c(1, 3)]) #' mz and intensity of the 1st sample
-spectra <- cbind(spectra, "", "")
-colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+#' wl-28-05-2019, Tue: Use average of all samples.
+#' mz and intensity of the 1st sample
+#' spectra <- as.matrix(peaklist[, c(1, 3)]) 
+#' spectra <- cbind(spectra, "", "")
+#' colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+tmp  <- apply(peaklist[,-c(1,2)],1,mean) 
+spectra  <- as.matrix(cbind(mz.obs = peaklist[,1], intensity = tmp, 
+                            isotope = "", modification = ""))
 
 deisotoped <- deisotoping(ppm        = opt$ppm,
                           no_isotope = opt$no_isotopes,
@@ -291,17 +301,19 @@ annotated <- annotating(ionisation_mode = opt$ionisation_mode,
                         dbase           = dbase)
 
 #' -----------------------------------------------------------------------
-#' update peaklist
+#' update and normalise peaklist
 indices       <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
 tmp           <- peaklist[indices, ]
 rownames(tmp) <- NULL
 final_peak    <- cbind(annotated, tmp)
 
+#' normalising based on TIC
+tmp <- norm_tic(final_peak[,-c(1:3)], dim=2)
+final_peak <- cbind(final_peak[,1:3],tmp)
+
 #' save results
 write.table(final_peak, file = opt$peak_out, sep = "\t", row.names = F)
-#' write.csv(final_peak, file="./test-data/peak.csv", row.names= F, quote=F)
-#' save(final_peak, deisotoped, annotated, file = "./test-data/peak.RData")
 
-#' normalising based on TIC
+
 
 
