@@ -2,13 +2,7 @@
   <xml name="requirements">
     <requirements>
       <requirement type="package">r-optparse</requirement>
-      <requirement type="package">r-reshape</requirement>
-      <requirement type="package">r-lattice</requirement>
-      <requirement type="package">r-writexls</requirement>
-      <requirement type="package">r-data.table</requirement>
       <requirement type="package">bioconductor-xcms</requirement>
-      <requirement type="package">bioconductor-impute</requirement>
-      <requirement type="package">bioconductor-pcaMethods</requirement>
     </requirements>
   </xml>
   <xml name="stdio">

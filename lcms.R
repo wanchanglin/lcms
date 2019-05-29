@@ -95,20 +95,20 @@ if (com_f) {
       ),
 
       #' process raw data with mzML or mzXML format and get xcmsSet
-      make_option("--FWHM", type = "integer", default = 3,
+      make_option("--FWHM", type = "double", default = 3,
         help = "Approximate FWHM (in seconds) of chromatographic peaks"
       ),
-      make_option("--snthresh", type = "integer", default = 5,
+      make_option("--snthresh", type = "double", default = 5,
         help = "The signal to noise threshold"
       ),
-      make_option("--minfrac", type = "double", default = 0.25, 
-        help = "Minimum fraction of samples necessary for it to be 
-                a valid peak group"
-      ),        
       make_option("--profmethod", type = "character", default = "binlin", 
         help = "Use either 'bin' (better for centroid, default), or 
                 'binlin' (better for profile)"
       ),            
+      make_option("--minfrac", type = "double", default = 0.25, 
+        help = "Minimum fraction of samples necessary for it to be 
+                a valid peak group"
+      ),        
       
       #' make library
       make_option("--ionisation_mode", type = "character", default = "positive"),
@@ -162,8 +162,8 @@ if (com_f) {
     #' process raw data with mzML or mzXML format and get xcmsSet
     FWHM = 3,              
     snthresh = 5,
-    minfrac = 0.25,
     profmethod = "binlin",
+    minfrac = 0.25,
 
     #' make library
     ionisation_mode = "negative", 
@@ -228,6 +228,8 @@ if (dir.exists(opt$mzxml_file)) {   ## file directory
 #' -----------------------------------------------------------------------
 #' XCMS
 if (opt$process) {
+
+  #' findPeaks.matchedFilter is used for xcmsSet.
   xset <- xcmsSet(opt$mzxml_file,
     method = "matchedFilter", step = 0.1,
     sigma = opt$FWHM / 2.3548, snthresh = opt$snthresh,
