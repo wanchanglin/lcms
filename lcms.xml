@@ -14,19 +14,22 @@
   <!-- =============================================================== -->
   <command detect_errors="exit_code">
     <![CDATA[
-      #for $file in $mzxml_file:
-        #if $file.is_of_type("mzxml")
-          ln -s ${file} ${file}.mzXML &&
-        #else
-          ln -s ${file} ${file}.mzML &&
-        #end if  
-      #end for
-
       Rscript ${__tool_directory__}/lcms.R
+
         --process $process.process_selector      
+
         #if $process.process_selector:
+
+          #for $file in $process.mzxml_file:
+            #if $file.is_of_type("mzxml")
+              ln -s ${file} ${file}.mzXML &&
+            #else
+              ln -s ${file} ${file}.mzML &&
+            #end if  
+          #end for
+
           --mzxml_file '$process.mzxml_file' 
-          --samp_name ${','.join([a.name for a in $mzxml_file])}  
+          --samp_name ${','.join([a.name for a in $process.mzxml_file])}  
           --FWHM '$process.FWHM'
           --snthresh '$process.snthresh'
           --profmethod '$process.profmethod'
@@ -40,18 +43,18 @@
         #end if
 
         ## Making library
-        --ionisation_mode '$ionisation_mode'
-        --fixed '$fixed'
-        --fixed_FA '$fixed_FA'
+        --ionisation_mode '$make_library.ionisation_mode'
+        --fixed '$make_library.fixed'
+        --fixed_FA '$make_library.fixed_FA'
         
         ## deisotope
-        --ppm $ppm
-        --no_isotopes '$no_isotopes'
-        --prop_1 '$prop_1'
-        --prop_2 '$prop_2'
+        --ppm '$deisotope.ppm'
+        --no_isotopes '$deisotope.no_isotopes'
+        --prop_1 '$deisotope.prop_1'
+        --prop_2 '$deisotope.prop_2'
 
         ## annotate
-        --ppm_annotate '$ppm_annotate'
+        --ppm_annotate '$annotate.ppm_annotate'
 
         ## save annotated peak 
         --peak_out $peak_out
@@ -173,7 +176,6 @@
   <outputs>
     <data format="tabular" name="peak_out"
           label="Annotated peak table on ${on_string}">
-      <filter> process['process_selector'] == True </filter>
     </data>
     
     <data format="rdata" name="rdata_out"
@@ -194,7 +196,6 @@
     <!-- 'WriteXLS' gives different size although the contents are the same -->
     <!-- different result in clustering because of randomness-->
     <test>
-      <expand macro="infile_imzml"/>
       <param name="process_selector" value="FALSE" /> 
       <param name="image_file" value="image_norm.tsv" />
       <param name="pca_selector" value="TRUE" /> 
@@ -211,7 +212,6 @@
 
     <!-- test for processing image. -->
     <test>
-      <expand macro="infile_imzml"/>
       <param name="process_selector" value="TRUE" /> 
       <param name="rem_outliers" value="TRUE" /> 
       <param name="summary" value="TRUE" /> 

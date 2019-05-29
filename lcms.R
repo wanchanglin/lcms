@@ -212,22 +212,23 @@ read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", h
 lookup_mod <- read[, 2:ncol(read)]
 row.names(lookup_mod) <- read[, 1]
 
-#' process multiple input files seperated by comma
-#' wl-04-03-2019, Mon: add file directory option. Note that it is not for
-#' galaxy.
-if (dir.exists(opt$mzxml_file)) {   ## file directory
-  opt$mzxml_file <- list.files(opt$mzxml_file, pattern = "mzml|mzxml", 
-                               ignore.case = T, recursive = F, 
-                               full.names = TRUE)
-} else {  ## multiple files
-  opt$mzxml_file <- str_vec(opt$mzxml_file)
-} 
 
 ## ==== Main process ====
 
 #' -----------------------------------------------------------------------
 #' XCMS
 if (opt$process) {
+
+  #' process multiple input files seperated by comma
+  #' wl-04-03-2019, Mon: add file directory option. Note that it is not for
+  #' galaxy.
+  if (dir.exists(opt$mzxml_file)) {   ## file directory
+    opt$mzxml_file <- list.files(opt$mzxml_file, pattern = "mzml|mzxml", 
+                                 ignore.case = T, recursive = F, 
+                                 full.names = TRUE)
+  } else {  ## multiple files
+    opt$mzxml_file <- str_vec(opt$mzxml_file)
+  } 
 
   #' findPeaks.matchedFilter is used for xcmsSet.
   xset <- xcmsSet(opt$mzxml_file,
@@ -242,7 +243,7 @@ if (opt$process) {
   xset <- retcor(xset, method = "obiwarp", profStep = 0.1, 
                  plottype = "none")  # "deviation"
   #' wl-15-03-2018, Thu: Possible memory problem?
-  #' wl-28-05-2019, Tue:  'profStep': Smaller steps yield more precision at
+  #' wl-28-05-2019, Tue: 'profStep': Smaller steps yield more precision at
   #'   the cost of greater memory usage. (from profStep-methods)
 
   xset <- group(xset, bw = 5, minfrac = opt$minfrac, mzwid = 0.025)
