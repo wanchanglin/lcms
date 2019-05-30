@@ -11,6 +11,6 @@ Rscript --vanilla ../lcms.R \
                 ../test-data/lcms_neg/ZH_180918_mann_neg_006.mzML, \
                 ../test-data/lcms_neg/ZH_180918_mann_neg_007.mzML" \
   --ionisation_mode "negative" \
-  --peak_out "../test-data/peak_neg.tsv" \
+  --peak_out "../test-data/peak_neg_tmp.tsv" \
   --rdata TRUE\
-  --rdata_out "../test-data/xset_neg.rdata"
+  --rdata_out "../test-data/xset_neg_tmp.rdata"

@@ -109,7 +109,7 @@ if (com_f) {
         help = "Minimum fraction of samples necessary for it to be 
                 a valid peak group"
       ),        
-      
+
       #' make library
       make_option("--ionisation_mode", type = "character", default = "positive"),
       make_option("--fixed", type = "logical", default = FALSE),
@@ -230,26 +230,31 @@ if (opt$process) {
     opt$mzxml_file <- str_vec(opt$mzxml_file)
   } 
 
-  #' findPeaks.matchedFilter is used for xcmsSet.
+  #' Construct xcmsSet objects for peaks
   xset <- xcmsSet(opt$mzxml_file,
     method = "matchedFilter", step = 0.1,
     sigma = opt$FWHM / 2.3548, snthresh = opt$snthresh,
     profmethod = opt$profmethod
   )
+  #' wl-30-05-2019, Thu: findPeaks.matchedFilter is one of methods.
 
   xset <- group(xset) #' slotNames(xset)
 
-  #' corrects retention times
+  #' Corrects retention times
   xset <- retcor(xset, method = "obiwarp", profStep = 0.1, 
                  plottype = "none")  # "deviation"
   #' wl-15-03-2018, Thu: Possible memory problem?
-  #' wl-28-05-2019, Tue: 'profStep': Smaller steps yield more precision at
-  #'   the cost of greater memory usage. (from profStep-methods)
+  #' wl-28-05-2019, Tue: 'profStep': step size (in m/z) to use for profile
+  #' generation. Smaller steps yield more precision at the cost of greater 
+  #' memory usage. (from profStep-methods)
+  #' wl-30-05-2019, Thu: two methods: 'peakgroups' and 'obiwarp'
 
+  #' Group peaks from different samples together
   xset <- group(xset, bw = 5, minfrac = opt$minfrac, mzwid = 0.025)
-  #' lwc-05-11-2013: group has three methods: group.density (default),
+  #' lwc-05-11-2013: three methods: group.density (default),
   #'  group.mzClust and group.nearest.
 
+  #' Integrate areas of missing peaks
   xset <- fillPeaks(xset)
   #' Note: need mzML files to fill in missing peaks
 
