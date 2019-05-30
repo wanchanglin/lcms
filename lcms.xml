@@ -1,5 +1,6 @@
 <!--
     wl-28-05-2019, Tue: commence
+    wl-30-05-2019, Thu: XML works. use 'ln -sf' to override the existed one
 -->
 <tool id="lcms" name="lcms" version="0.1.0">
   <description>
@@ -14,20 +15,21 @@
   <!-- =============================================================== -->
   <command detect_errors="exit_code">
     <![CDATA[
+      #if $process.process_selector:
+        #for $file in $process.mzxml_file:
+          #if $file.is_of_type("mzxml")
+            ln -sf ${file} ${file}.mzXML &&
+          #else
+            ln -sf ${file} ${file}.mzML &&
+          #end if  
+        #end for
+      #end if
+
       Rscript ${__tool_directory__}/lcms.R
 
         --process $process.process_selector      
 
         #if $process.process_selector:
-
-          #for $file in $process.mzxml_file:
-            #if $file.is_of_type("mzxml")
-              ln -s ${file} ${file}.mzXML &&
-            #else
-              ln -s ${file} ${file}.mzML &&
-            #end if  
-          #end for
-
           --mzxml_file '$process.mzxml_file' 
           --samp_name ${','.join([a.name for a in $process.mzxml_file])}  
           --FWHM '$process.FWHM'
