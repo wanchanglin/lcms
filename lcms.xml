@@ -1,6 +1,7 @@
 <!--
     wl-28-05-2019, Tue: commence
     wl-30-05-2019, Thu: XML works. use 'ln -sf' to override the existed one
+    wl-04-06-2019, Tue: help information and planemo test
 -->
 <tool id="lcms" name="lcms" version="0.1.0">
   <description>
@@ -90,12 +91,14 @@
                 help = "Defining the signal to noise cutoff to be used in 
                         the chromatographic peak detection step" />
 
-          <param name="profmethod" type="text"
-                  value="binlin"
-                  label="Method to use for profile generation"
-                  help = "Use either 'bin' (better for centroid, default), or 
-                          'binlin' (better for profile)"/>
-            <!-- Supported values are "bin", "binlin", "binlinbase" and "intlin" -->
+          <param name="profmethod" type="select"
+             label="Select a method for profile generation"
+             help="Method to use for profile generation">
+             <option value= "binlin" selected="true">binlin</option>
+             <option value="bin">bin</option>
+             <option value="binlinbase">binlinbase</option>
+             <option value="intlin">intlin</option>
+          </param>
 
           <!-- parameter for function group. group.density (default) is used. -->
           <param name="minfrac" type="float" value="0.25"
@@ -140,7 +143,7 @@
     </section>
 
     <section name="deisotope"
-              title="Perform deisotoping on a subset of the image">
+              title="Perform deisotoping on LC-MS data">
       
       <param name="ppm" type="integer" value="3" label="Tolerance (ppm)"
               help="Tolerance (ppm) within which mass of isotope must
@@ -163,7 +166,7 @@
     </section>
 
     <section name="annotate"
-              title="Perform putative annotation on deisotoped image">
+              title="Perform putative annotation on deisotoped LC-MS data">
       <param name="ppm_annotate" type="integer" value="10"
               label="Specify ppm threshold for annotation"
               help="Defines ppm threshold for which |observed m/z -
@@ -194,155 +197,122 @@
 
   <!-- =============================================================== -->
   <tests>
-    <!-- test for not processing image. Just get PCA et al -->
-    <!-- 'WriteXLS' gives different size although the contents are the same -->
-    <!-- different result in clustering because of randomness-->
-    <test>
-      <param name="process_selector" value="FALSE" /> 
-      <param name="image_file" value="image_norm.tsv" />
-      <param name="pca_selector" value="TRUE" /> 
-      <param name="loading" value="TRUE" /> 
-      <param name="slice_selector" value="TRUE" /> 
-      <param name="clus_selector" value="TRUE" /> 
-      <param name="intensity" value="TRUE" /> 
-      <output name="pca_out" file="res/pca.pdf"  compare="sim_size"/>
-      <!-- <output name="loading_out" file="res/loading.xlsx"  compare="sim_size"/> -->
-      <output name="slice_out" file="res/slice.pdf"  compare="sim_size"/>
-      <!-- <output name="clus_out" file="res/clus.pdf"  compare="sim_size"/> -->
-      <output name="intensity_out" file="res/intensity.tsv" />
-    </test>
-
-    <!-- test for processing image. -->
+    <!-- test for mzML files -->
     <test>
       <param name="process_selector" value="TRUE" /> 
-      <param name="rem_outliers" value="TRUE" /> 
-      <param name="summary" value="TRUE" /> 
+      <param name="mzxml_file" value="lcms_pos/ZH_190918_mann_liver_pos_001.mzML,lcms_pos/ZH_190918_mann_liver_pos_002.mzML,lcms_pos/ZH_190918_mann_liver_pos_003.mzML,lcms_pos/ZH_190918_mann_liver_pos_004.mzML,lcms_pos/ZH_190918_mann_liver_pos_005.mzML,lcms_pos/ZH_190918_mann_liver_pos_006.mzML,lcms_pos/ZH_190918_mann_liver_pos_007.mzML" />
+      <param name="FWHM" value="3" /> 
+      <param name="snthresh" value="5" /> 
+      <param name="profmethod" value="binlin" />
+      <param name="minfrac" value="0.25" /> 
       <param name="rdata" value="TRUE" /> 
-      <param name="pca_selector" value="TRUE" /> 
-      <param name="loading" value="TRUE" /> 
-      <param name="slice_selector" value="TRUE" /> 
-      <param name="clus_selector" value="TRUE" /> 
-      <param name="intensity" value="TRUE" /> 
-      <!-- <output name="image_out" file="res/image.tsv" /> -->
-      <!-- <output name="rdata_out" file="res/r_running.rdata" compare="sim_size" /> -->
-      <output name="pca_out" file="res/pca.pdf"  compare="sim_size"/>
-      <!-- <output name="loading_out" file="res/loading.xlsx"  compare="sim_size"/> -->
-      <!-- <output name="slice_out" file="res/slice.pdf"  compare="sim_size"/> -->
-      <!-- <output name="clus_out" file="res/clus.pdf"  compare="sim_size"/> -->
-      <!-- <output name="intensity_out" file="res/intensity.tsv" /> -->
+      <!-- <output name="peak_out" file="res/peak_pos.tsv" /> -->
+      <!-- <output name="rdata_out" file="res/xset_pos.rdata"  compare="sim_size"/> -->
     </test>
+
+    <!-- test for rdata file. -->  
+    <test>
+      <param name="process_selector" value="FALSE" /> 
+      <param name="xset_file" value="res/xset_neg.rdata" /> 
+      <param name="ionisation_mode" value="negative" /> 
+      <param name="fixed" value="FALSE" /> 
+      <param name="fixed_FA" value="16" /> 
+      <param name="ppm" value="3" /> 
+      <param name="ppm_annotate" value="10" /> 
+      <!-- <output name="peak_out" file="res/peak_neg.tsv" /> -->
+    </test>
+      
   </tests>
 
   <!-- =============================================================== -->
   <help>
-DIMS Processing
+LC-MS Processing
 ================
 
 Description
 -----------
 
-This tool performs Direct-infusion mass spectrometry lipidomics processing. 
+This tool performs deisotyping and annotating of LC-MS data. 
 
 Inputs
 ------
 
-**\1. DIMS data**
+There are two input data formats, either ``mzML/mzXML`` or R data file for
+deisotyping and annotating analysis. 
 
-The lipidomics data format is ``mzXML`` or ``mzML`` which can be converted 
-from raw data by ``MSConvert`` of ProteoWizard_. Each file represents one 
-sample or replicate. Select multiple ``mzXML`` or ``mzML`` files for 
-processing. The input data will be either positive or negative mode. 
-They cannot be mixed up.
+**\1. LC-MS data with mzML/mzXML format**
 
+The LC-MS data format is ``mzML`` or ``mzXML`` which can be converted from
+raw data by ``MSConvert`` of ProteoWizard_. Each file represents one sample
+or replicate. Select multiple ``mzXML`` files for processing. The input data
+will be either positive or negative mode. They cannot be mixed up.
+
+These ``mzML/mzXML`` files are converted by R package ``xcms`` into R data
+files. The algorithm for peak detection is fixed as ``matchedFilter`` and
+retention times alignment across samples with ``obiwarp`` method. The
+``density`` method is employed for the peak grouping. The parameters for
+user to choose are:
+
+- ``FWHM``: specifying the full width at half maximum of matched filtration
+  Gaussian model peak. Default value is 3.
+- ``snthresh``: defining the signal to noise cutoff to be used in the
+  chromatographic peak detection step. Default value is 5.
+- ``profmethod``: Method to use for profile generation. Supported values are
+  "bin", "binlin" (default), "binlinbase" and "intlin".
+- ``minfrac``: minimum fraction (fefault: 0.25) of samples necessary in at
+  least one of the sample groups for it to be a valid group.,
+   
+**\2. R data file**
+
+This R data file is ``xcmsSet`` object file, produced by R package ``xcms``. 
 
 .. _ProteoWizard: http://proteowizard.sourceforge.net/
-
-
-**\2. Target matrix**
-  
-The target matrix in tabular format(``.tsv``) includes lipid target lists in
-two columns. The following table is an example (positive mode):
-
-========    ==========================================
-mz          name
-========    ==========================================
-185.1547    FA(11:0)_[M-H]1-
-197.1547    FA(12:1)_[M-H]1-
-199.1704    FA(12:0)_[M-H]1-
-209.1183    OCT(C12H18O3)_jasmonic acid_[M-H]1-
-211.134     OCT(C12H20O3)_dihydrojasmonic_acid_[M-H]1-
-213.186     FA(13:0)_[M-H]1-
-215.1653    FA(12:0)-OH_[M-H]1-
-223.134     OCT(C13H20O3)_methyl_jasmonate_[M-H]1-
-225.1132    OCT(C12H18O4)_[M-H]1-
-225.186     FA(14:1)_[M-H]1-
-========    ==========================================
-
-Note that the target matrix file should be either positive or negative,
-depending on the mode of DIMS data input.
 
 
 Parameters
 ----------
 
-Select time range
-~~~~~~~~~~~~~~~~~
-
-- The time range for positive mode is 20 - 60s
-- The time range for negative mode is 80 - 120s
-
-Select m/z range
-~~~~~~~~~~~~~~~~
-
-- Select m/z range of 200 - 1200 for positive mode 
-- Select m/z range of 185 - 1200 for negative mode
-
-Select m/z window size
-~~~~~~~~~~~~~~~~~~~~~~
-
-Select m/z window height for peak finding. The default value is 0.01.
-
+See brief description on the setting of parameters for deisotyping and
+annotating above.
 
 Outputs
 ----------
 
-Signal Peak Table
-~~~~~~~~~~~~~~~~~
+Annotated Peak Table
+~~~~~~~~~~~~~~~~~~~~
 
-The default output is the signal table in tabular format:
+The peak area is normalised by TIC and the annotated peak table is in
+tabular format:
 
-====================================== ========  ===========   ========   ==========   
-name                                   mz        pos-001       pos-002    pos-003     
-====================================== ========  ===========   ========   ==========   
-PS_32:5_[M+Na]1+                       748.416   0             0          0           
-PE_37:7_[M+H]1+ / PA_39:8_[M+NH4]1+    748.4912  104.3298294   0          136.4149127 
-PS_33:1_[M+H]1+ / PG_33:3_[M+NH4]1+    748.5123  755.8055022   0          539.1916569 
-PE-P_38:6_[M+H]1+                      748.5276  862.2107571   0          1028.002626 
-PC-O_34:0_[M+H]1+ / PE-O_37:0_[M+H]1+  748.6215  0             0          0           
-TG_43:3_[M+NH4]1+                      748.645   0             0          0           
-DG_44:3_[M+NH4]1+                      748.6814  13201.64570   8790.560   0
-2H-IS_PE_[M+H]1+                       748.7244  113052.2131   0          81301.89354 
-====================================== ========  ===========   ========   ==========   
+=================================== ========  ======= =========== =========== =========== 
+annotated                           mz        rt      pos_001     pos_002     pos_003
+=================================== ========  ======= =========== =========== =========== 
+[Cer(42:2)+H]                       648.6199  386.44  509476.1705 90147.43029 17059.58466
+[DG-H20(38:3)+Na][DG-H20(40:6)+H]   651.5342  389.92  89868.92836 76789.83982 40555.16262
+[Cer(40:5)+K]                       652.5009  56.93   1967715.965 1904828.953 132351.8552
+[DG-H20(40:5)+H]                    653.5499  396.17  88798.76816 68192.75595 10524.34529
+=================================== ========  ======= =========== =========== =========== 
 
-Deviations table
-~~~~~~~~~~~~~~~~
+R running results (OPTIONAL)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The m/z deviation table, the same format as signal peak table, will be
-produced if **Produce m/z deviations table?** is TRUE. 
-
-Individual table
-~~~~~~~~~~~~~~~~
-
-An Excel ``XLSX`` file containing each sample's signals and m/z deviations
-will be produced if **Produce signal and deviation for each individual
-sample?** is set as TRUE. This file cannot shown in Galaxy but can be
-downloaded.
+``xcms`` running results are saved as an R file ``rdata`` for advanced user
+to further analysis.
 
 
   </help>
   
   <citations>
-    <citation type="doi">10.1007/s11306-017-1252-5</citation>
+    <citation type="bibtex">
+    @misc{, 
+      title = {LC-MS Processing}, 
+      url = {https://github.com/hallz/lcms_processing_}, 
+      journal = {GitHub}, 
+      author = {hallz}, 
+      year = {2016}, 
+      month={Feb}}
+    }
+    </citation>
   </citations>
 
 </tool>

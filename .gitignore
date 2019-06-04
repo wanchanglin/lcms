@@ -2,7 +2,6 @@
 
 ## Folders to be ignored 
 doc/
-res/
 test-data/lcms_neg
 test-data/lcms_pos
 

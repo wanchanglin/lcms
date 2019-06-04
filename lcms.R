@@ -165,7 +165,7 @@ if (com_f) {
     #'                    ),
 
     mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
-    xset_file = paste0(tool_dir, "test-data/xset_neg.rdata"),
+    xset_file = paste0(tool_dir, "test-data/res/xset_neg.rdata"),
     samp_name = "",
 
     #' process raw data with mzML or mzXML format and get xcmsSet
@@ -189,9 +189,9 @@ if (com_f) {
     ppm_annotate = 15,
 
     #' Output
-    peak_out = paste0(tool_dir, "test-data/peak_neg_deb.tsv"),
+    peak_out = paste0(tool_dir, "test-data/res/peak_neg.tsv"),
     rdata = TRUE,
-    rdata_out = paste0(tool_dir, "test-data/xset_neg_deb.rdata")
+    rdata_out = paste0(tool_dir, "test-data/res/xset_neg.rdata")
   )
 }
 #' print(opt)
