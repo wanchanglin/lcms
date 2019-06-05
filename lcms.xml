@@ -109,7 +109,7 @@
           <param name="rdata" type="boolean" 
                   truevalue="TRUE" falsevalue="FALSE" checked="true" 
                   label="Save xcms results?"
-                  help="Sve xcmsSet R file after runninbg xcms."/>
+                  help="Save xcmsSet R file after runninbg xcms."/>
 
        </when>
 
@@ -127,7 +127,7 @@
               label="Specify ionisation mode"
               help="Choose 'positive' or 'negative', will determine
                     which lipid classes are in database" >
-        <option value="positive" selected="True">positive</option>
+        <option value="positive" selected="true">positive</option>
         <option value="negative">negative</option>
       </param>
 
@@ -145,7 +145,7 @@
     <section name="deisotope"
               title="Perform deisotoping on LC-MS data">
       
-      <param name="ppm" type="integer" value="3" label="Tolerance (ppm)"
+      <param name="ppm" type="integer" value="5" label="Tolerance (ppm)"
               help="Tolerance (ppm) within which mass of isotope must
                     be within"/>
 
@@ -167,7 +167,7 @@
 
     <section name="annotate"
               title="Perform putative annotation on deisotoped LC-MS data">
-      <param name="ppm_annotate" type="integer" value="10"
+      <param name="ppm_annotate" type="integer" value="15"
               label="Specify ppm threshold for annotation"
               help="Defines ppm threshold for which |observed m/z -
                     theoretical m/z| must be less than for annotation to be
@@ -197,7 +197,7 @@
 
   <!-- =============================================================== -->
   <tests>
-    <!-- test for mzML files -->
+    <!-- test for mzML files
     <test>
       <param name="process_selector" value="TRUE" /> 
       <param name="mzxml_file" value="lcms_pos/ZH_190918_mann_liver_pos_001.mzML,lcms_pos/ZH_190918_mann_liver_pos_002.mzML,lcms_pos/ZH_190918_mann_liver_pos_003.mzML,lcms_pos/ZH_190918_mann_liver_pos_004.mzML,lcms_pos/ZH_190918_mann_liver_pos_005.mzML,lcms_pos/ZH_190918_mann_liver_pos_006.mzML,lcms_pos/ZH_190918_mann_liver_pos_007.mzML" />
@@ -206,8 +206,21 @@
       <param name="profmethod" value="binlin" />
       <param name="minfrac" value="0.25" /> 
       <param name="rdata" value="TRUE" /> 
-      <!-- <output name="peak_out" file="res/peak_pos.tsv" /> -->
-      <!-- <output name="rdata_out" file="res/xset_pos.rdata"  compare="sim_size"/> -->
+      <output name="peak_out" file="res/peak_pos.tsv" />
+      <output name="rdata_out" file="res/xset_pos.rdata"  compare="sim_size"/>
+    </test>
+    -->
+
+    <!-- test for rdata file. -->  
+    <test>
+      <param name="process_selector" value="FALSE" /> 
+      <param name="xset_file" value="res/xset_pos.rdata" /> 
+      <param name="ionisation_mode" value="positive" /> 
+      <param name="fixed" value="FALSE" /> 
+      <param name="fixed_FA" value="16" /> 
+      <param name="ppm" value="5" /> 
+      <param name="ppm_annotate" value="15" /> 
+      <output name="peak_out" file="res/peak_pos.tsv" />
     </test>
 
     <!-- test for rdata file. -->  
@@ -217,9 +230,9 @@
       <param name="ionisation_mode" value="negative" /> 
       <param name="fixed" value="FALSE" /> 
       <param name="fixed_FA" value="16" /> 
-      <param name="ppm" value="3" /> 
-      <param name="ppm_annotate" value="10" /> 
-      <!-- <output name="peak_out" file="res/peak_neg.tsv" /> -->
+      <param name="ppm" value="5" /> 
+      <param name="ppm_annotate" value="15" /> 
+      <output name="peak_out" file="res/peak_neg.tsv" />
     </test>
       
   </tests>
