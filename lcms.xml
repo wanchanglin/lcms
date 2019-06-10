@@ -52,7 +52,7 @@
         
         ## deisotope
         --ppm '$deisotope.ppm'
-        --no_isotopes '$deisotope.no_isotopes'
+        --no_isotope '$deisotope.no_isotope'
         --prop_1 '$deisotope.prop_1'
         --prop_2 '$deisotope.prop_2'
 
@@ -94,7 +94,7 @@
           <param name="profmethod" type="select"
              label="Select a method for profile generation"
              help="Method to use for profile generation">
-             <option value= "binlin" selected="true">binlin</option>
+             <option value="binlin" selected="true">binlin</option>
              <option value="bin">bin</option>
              <option value="binlinbase">binlinbase</option>
              <option value="intlin">intlin</option>
@@ -149,7 +149,7 @@
               help="Tolerance (ppm) within which mass of isotope must
                     be within"/>
 
-      <param name="no_isotopes" type="integer" value="2"
+      <param name="no_isotope" type="integer" value="2"
               min="1" max="2"
               label="Number of isotopes"
               help="Number of isotopes to consider (1 or 2)"/>
@@ -211,7 +211,7 @@
     </test>
     -->
 
-    <!-- test for rdata file. -->  
+    <!-- test for rdata file. 
     <test>
       <param name="process_selector" value="FALSE" /> 
       <param name="xset_file" value="res/xset_pos.rdata" /> 
@@ -222,7 +222,8 @@
       <param name="ppm_annotate" value="15" /> 
       <output name="peak_out" file="res/peak_pos.tsv" />
     </test>
-
+    -->  
+    
     <!-- test for rdata file. -->  
     <test>
       <param name="process_selector" value="FALSE" /> 

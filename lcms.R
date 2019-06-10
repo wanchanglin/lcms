@@ -21,6 +21,7 @@
 
 ## ==== General settings ====
 rm(list = ls(all = T))
+set.seed(123)
 
 #' flag for command-line use or not. If false, only for debug interactively.
 com_f <- T
@@ -127,7 +128,7 @@ if (com_f) {
 
       #' deisotope
       make_option("--ppm", type = "integer", default = 5),
-      make_option("--no_isotopes", type = "integer", default = 2),
+      make_option("--no_isotope", type = "integer", default = 2),
       make_option("--prop_1", type = "double", default = 0.9),
       make_option("--prop_2", type = "double", default = 0.5),
 
@@ -151,8 +152,8 @@ if (com_f) {
     args = commandArgs(trailingOnly = TRUE)
   )
 } else {
-  tool_dir <- "C:/R_lwc/lcms/" #' for windows
-  #' tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
+  #' tool_dir <- "C:/R_lwc/lcms/" #' for windows
+  tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
     process = T,
 
@@ -181,7 +182,7 @@ if (com_f) {
 
     #' deisotope
     ppm = 5,
-    no_isotopes = 2,
+    no_isotope = 2,
     prop_1 = 0.9,
     prop_2 = 0.5,
 
@@ -247,7 +248,7 @@ if (opt$process) {
     opt$samp_name <- str_vec(opt$samp_name)
   }
   #' extract only sample names (use greedy match)
-  names(opt$samp_name) <- gsub(".*/|\\..*$", "", opt$samp_name, perl = T)
+  opt$samp_name <- gsub(".*/|\\..*$", "", opt$samp_name, perl = T)
 
   #' Construct xcmsSet objects for peaks
   xset <- xcmsSet(opt$mzxml_file, snames = opt$samp_name,
@@ -312,7 +313,7 @@ spectra <- as.matrix(cbind(
 
 deisotoped <- deisotoping(
   ppm = opt$ppm,
-  no_isotope = opt$no_isotopes,
+  no_isotope = opt$no_isotope,
   prop.1 = opt$prop_1,
   prop.2 = opt$prop_2,
   spectra = spectra
