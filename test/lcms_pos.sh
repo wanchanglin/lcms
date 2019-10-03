@@ -6,10 +6,7 @@ Rscript --vanilla ../lcms.R \
   --mzxml_file "../test-data/lcms_pos/ZH_190918_mann_liver_pos_001.mzML, \
                 ../test-data/lcms_pos/ZH_190918_mann_liver_pos_002.mzML, \
                 ../test-data/lcms_pos/ZH_190918_mann_liver_pos_003.mzML, \
-                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_004.mzML, \
-                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_005.mzML, \
-                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_006.mzML, \
-                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_007.mzML" \
+                ../test-data/lcms_pos/ZH_190918_mann_liver_pos_004.mzML" \
   --ionisation_mode "positive" \
   --peak_out "../test-data/res/peak_pos.tsv" \
   --rdata TRUE\
