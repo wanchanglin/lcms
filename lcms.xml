@@ -5,7 +5,7 @@
 -->
 <tool id="lcms" name="lcms" version="0.1.0">
   <description>
-    Deisotyping and annotating of LC-MS data
+    Processing, deisotyping and annotating of LC-MS data
   </description>
   <macros>
     <import>macros.xml</import>
@@ -16,7 +16,7 @@
   <!-- =============================================================== -->
   <command detect_errors="exit_code">
     <![CDATA[
-      #if $process.process_selector:
+      #if $process.process_selector == "TRUE":
         #for $file in $process.mzxml_file:
           #if $file.is_of_type("mzxml")
             ln -sf ${file} ${file}.mzXML &&
@@ -30,7 +30,7 @@
 
         --process $process.process_selector      
 
-        #if $process.process_selector:
+        #if $process.process_selector == "TRUE":
           --mzxml_file '$process.mzxml_file' 
           --samp_name ${','.join([a.name for a in $process.mzxml_file])}  
           --FWHM '$process.FWHM'
@@ -70,30 +70,32 @@
     <conditional name="process">
       <param label="Process LC-MS data with mzML or mzXML format"
              name="process_selector"
-             type="boolean" truevalue="TRUE" falsevalue="FALSE" checked="true"
-             help="Choose if you want to process MSI data or only visualise
-                   processed MSI data." />
+             type="select"
+             help="Choose if you want to process MS data or only annotate it." >
+                <option value="TRUE" selected="True">perform processing</option>
+                <option value="FALSE">annotation of processed file</option>
+      </param>
 
       <when value="TRUE">
 
         <param name="mzxml_file" type="data"  format="mzxml,mzml" multiple="true" 
               label="LC-MS data" optional="false"
-              help="A bunch of LC-MS  data (positive or negative mode) in mzXML 
+              help="At least two LC-MS data files (positive or negative mode) in mzXML 
                     or mzML format." />
 
           <!-- parameter for function xcmsSet. findPeaks.matchedFilter is used. -->
           <param name="FWHM" type="float" value="3"
                 label="FWHM of matched filtration gaussian model peak."
-                help = "Approximate FWHM (in seconds) of chromatographic peaks" />
+                help = "(FWHM) Approximate FWHM (in seconds) of chromatographic peaks." />
 
           <param name="snthresh" type="float" value="5"
                 label="The signal to noise threshold"
-                help = "Defining the signal to noise cutoff to be used in 
+                help = "(snthresh) Defining the signal to noise cutoff to be used in 
                         the chromatographic peak detection step" />
 
           <param name="profmethod" type="select"
              label="Select a method for profile generation"
-             help="Method to use for profile generation">
+             help="(profmethod) Method to use for profile generation.">
              <option value="binlin" selected="true">binlin</option>
              <option value="bin">bin</option>
              <option value="binlinbase">binlinbase</option>
@@ -103,7 +105,7 @@
           <!-- parameter for function group. group.density (default) is used. -->
           <param name="minfrac" type="float" value="0.25"
                 label="Minimum fraction"
-                help = "Minimum fraction of samples necessary for it to be a 
+                help = "(minfrac) Minimum fraction of samples necessary for it to be a
                         valid peak group" />
 
           <param name="rdata" type="boolean" 
@@ -126,9 +128,10 @@
       <param name="ionisation_mode" type="select"
               label="Specify ionisation mode"
               help="Choose 'positive' or 'negative', will determine
-                    which lipid classes are in database" >
-        <option value="positive" selected="true">positive</option>
-        <option value="negative">negative</option>
+                    which lipid classes are in database"
+              display="radio">
+            <option value="positive" selected="true">positive</option>
+            <option value="negative">negative</option>
       </param>
 
       <param name="fixed" type="boolean" 
@@ -184,10 +187,10 @@
     </data>
     
     <data format="rdata" name="rdata_out"
-          label="R running results on ${on_string}">
+          label="xcmsSet R results on ${on_string}">
           <filter> 
             ((
-            process['process_selector'] == True and
+            process['process_selector'] == "TRUE" and
             process['rdata'] == True
             ))
           </filter>
@@ -197,7 +200,7 @@
 
   <!-- =============================================================== -->
   <tests>
-    <test>
+    <!--test>
       <param name="process_selector" value="TRUE" /> 
       <param name="mzxml_file" value="lcms_pos/ZH_190918_mann_liver_pos_001.mzML,lcms_pos/ZH_190918_mann_liver_pos_002.mzML" />
       <param name="ionisation_mode" value="positive" /> 
@@ -221,7 +224,19 @@
       <param name="rdata" value="TRUE" /> 
       <output name="peak_out" file="res/peak_neg.tsv" />
       <output name="rdata_out" file="res/xset_neg.rdata" compare="sim_size" delta="1000" />
+    </test-->
+
+    <!--test>
+      <param name="mzxml_file" value="lcms_pos/cut_ZH_190918_mann_liver_pos_001.mzML,lcms_pos/cut_ZH_190918_mann_liver_pos_002.mzML" />
+      <output name="peak_out" file="res/peak_pos_cut.tsv" ftype="tabular"/>
+      <output name="rdata_out" file="res/xset_pos_cut.rdata" ftype="rdata" compare="sim_size" delta="1000" />
     </test>
+
+    <test>
+      <param name="mzxml_file" value="lcms_neg/cut_ZH_180918_mann_neg_001.mzML,lcms_neg/cut_ZH_180918_mann_neg_002.mzML" />
+      <output name="peak_out" file="res/peak_neg_cut.tsv" />
+      <output name="rdata_out" file="res/xset_neg_cut.rdata" compare="sim_size" delta="1000" />
+    </test-->
 
     <test>
       <param name="process_selector" value="FALSE" /> 
@@ -248,8 +263,10 @@
 
   <!-- =============================================================== -->
   <help>
-LC-MS Processing
-================
+
+LC-MS processing, deisotoping and annotating
+============================================
+
 
 Description
 -----------
@@ -280,13 +297,13 @@ user to choose are:
 - ``snthresh``: defining the signal to noise cutoff to be used in the
   chromatographic peak detection step. Default value is 5.
 - ``profmethod``: Method to use for profile generation. Supported values are
-  "bin", "binlin" (default), "binlinbase" and "intlin".
+  "bin", "binlin" (default), "binlinbase" and "intlin". "bin" is better for centroid data, "binlin" for profile data.
 - ``minfrac``: minimum fraction (fefault: 0.25) of samples necessary in at
   least one of the sample groups for it to be a valid group.,
    
 **\2. R data file**
 
-This R data file is ``xcmsSet`` object file, produced by R package ``xcms``. 
+Already processed data can be loaded as ``xcmsSet`` object R data file, produced by the R package ``xcms``.
 
 .. _ProteoWizard: http://proteowizard.sourceforge.net/
 
@@ -317,11 +334,10 @@ annotated                           mz        rt      pos_001     pos_002     po
 
       |
 
-R running results (OPTIONAL)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+xcmsSet R data file (OPTIONAL)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``xcms`` running results are saved as an R file ``rdata`` for advanced user
-to further analysis.
+``xcmsSet`` R results are saved as an R file ``rdata`` for advanced users to perform further analysis.
 
 
   </help>
