@@ -27,12 +27,10 @@
       #end if
 
       Rscript ${__tool_directory__}/lcms.R
-
-        --process $process.process_selector      
-
+        --process '$process.process_selector'      
         #if $process.process_selector == "TRUE":
           --mzxml_file '$process.mzxml_file' 
-          --samp_name ${','.join([a.name for a in $process.mzxml_file])}  
+          --samp_name '${','.join([a.name for a in $process.mzxml_file])}'  
           --FWHM '$process.FWHM'
           --snthresh '$process.snthresh'
           --profmethod '$process.profmethod'
@@ -60,7 +58,7 @@
         --ppm_annotate '$annotate.ppm_annotate'
 
         ## save annotated peak 
-        --peak_out $peak_out
+        --peak_out '$peak_out'
     ]]>
   </command>
 
@@ -200,7 +198,7 @@
 
   <!-- =============================================================== -->
   <tests>
-    <!--test>
+    <test>
       <param name="process_selector" value="TRUE" /> 
       <param name="mzxml_file" value="lcms_pos/ZH_190918_mann_liver_pos_001.mzML,lcms_pos/ZH_190918_mann_liver_pos_002.mzML" />
       <param name="ionisation_mode" value="positive" /> 
@@ -224,19 +222,7 @@
       <param name="rdata" value="TRUE" /> 
       <output name="peak_out" file="res/peak_neg.tsv" />
       <output name="rdata_out" file="res/xset_neg.rdata" compare="sim_size" delta="1000" />
-    </test-->
-
-    <!--test>
-      <param name="mzxml_file" value="lcms_pos/cut_ZH_190918_mann_liver_pos_001.mzML,lcms_pos/cut_ZH_190918_mann_liver_pos_002.mzML" />
-      <output name="peak_out" file="res/peak_pos_cut.tsv" ftype="tabular"/>
-      <output name="rdata_out" file="res/xset_pos_cut.rdata" ftype="rdata" compare="sim_size" delta="1000" />
     </test>
-
-    <test>
-      <param name="mzxml_file" value="lcms_neg/cut_ZH_180918_mann_neg_001.mzML,lcms_neg/cut_ZH_180918_mann_neg_002.mzML" />
-      <output name="peak_out" file="res/peak_neg_cut.tsv" />
-      <output name="rdata_out" file="res/xset_neg_cut.rdata" compare="sim_size" delta="1000" />
-    </test-->
 
     <test>
       <param name="process_selector" value="FALSE" /> 

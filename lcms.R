@@ -18,6 +18,9 @@
 #'    disable its plot.
 #'  - use average of all samples' intensity for deisotyping
 #' wl-30-05-2019, Thu: add 'samp_name' especially for galaxy
+#' wl-14-10-2019, Mon: fix a bug for planemo test only. 'planemo test' will 
+#'  put 'test-data' in an random directory. To avoid this, use 'samp_name'
+#'  directly in 'peaklist'.
 
 ## ==== General settings ====
 rm(list = ls(all = T))
@@ -155,17 +158,15 @@ if (com_f) {
   #' tool_dir <- "C:/R_lwc/lcms/" #' for windows
   tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
-    process = T,
+    process = F,
 
     #' input files
-    #' mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_003.mzML"),
-    #'                    paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_004.mzML"),
-    #'                    sep = ","
-    #'                    ),
+    mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
+                       paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
+                       sep = ","
+                       ),
 
-    mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
+    #' mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
     xset_file = paste0(tool_dir, "test-data/res/xset_neg.rdata"),
     samp_name = "",
 
@@ -280,22 +281,26 @@ if (opt$process) {
   xset <- fillPeaks(xset)
   #' Note: need mzML files to fill in missing peaks
 
-  if (opt$rdata) {
-    save(xset, file = opt$rdata_out)
-  }
-} else {
-  load(opt$xset_file)
-}
+  #' Peak lists. (peak area: value = "into"; peak height: value = "maxo")
+  peaklist <- peakTable(xset,
+                        method = "maxint", value = "into",
+                        intensity = "maxo"
+                        ) #' peak area
 
-#' Peak lists. (peak area: value = "into"; peak height: value = "maxo")
-peaklist <- peakTable(xset,
-  method = "maxint", value = "into",
-  intensity = "maxo"
-) #' peak area
-#' round mz and rt, and kepp them
-peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
-peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks))
-peaklist <- peaklist[, -3] #' remove mzml directory name
+  #' round mz and rt, and kepp them
+  peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
+  peaklist <- peaklist[,c("mz","rt",opt$samp_name)]
+  #' wl-14-10-2019, Mon: directory will be random in planemo test. 
+  #' peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks))
+  #' peaklist <- peaklist[, -3] #' remove mzml directory name
+
+  if (opt$rdata) {
+    save(xset, peaklist, file = opt$rdata_out)
+  } 
+  
+} else {
+    load(opt$xset_file)
+}
 
 #' Deisotoping
 
@@ -344,6 +349,7 @@ indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
 tmp <- peaklist[indices, ]
 rownames(tmp) <- NULL
 final_peak <- cbind(annotated, tmp)
+
 
 #' normalising based on TIC
 tmp <- norm_tic(final_peak[, -c(1:3)], dim = 2)
