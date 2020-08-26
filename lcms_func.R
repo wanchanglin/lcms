@@ -1,9 +1,26 @@
+#' Script to process lcms data using xcms
+#' Functions for making lipid library, deisotoping and annotating were from
+#' Image Scope (Nick Bond) and modified for use with lcms data
+#' Z.Hall, Oct 2014
+#' -----------------------------------------------------------------------
+#' wl-12-03-2018, Mon: commence
+#' wl-15-03-2018, Thu: tidy R codes
+#' wl-20-05-2019, Mon: Some notes:
+#'  - Use peak area instead of peak height for deisotyping
+#'  - Deisotyping based on peaks with/without missing value filling. Should
+#'    based on MV filling
+#'  - Deisotyping based on mz and the first sample's intensity. Should use
+#'    average of all sample intensity
+#'  - should use 'peakTable' instead of 'low level' function such as
+#'    'groupval' and 'groupnames'. If so, R package 'reshape2' function
+#'    'colsplit' is no longer needed.
+#' wl-26-08-2020, Wed: Review. Tidy up
 
 #' ========================================================================
-#' wl-21-05-2019, Tue: take this function from 'massPix' and remove 
+#' wl-21-05-2019, Tue: take this function from 'massPix' and remove
 #'  'sel.class' argument
-makelibrary <- function(ionisation_mode = c("positive","negative"), 
-                        fixed = F, fixed_FA, lookup_lipid_class, 
+makelibrary <- function(ionisation_mode = c("positive","negative"),
+                        fixed = F, fixed_FA, lookup_lipid_class,
                         lookup_FA, lookup_element) {
   cat("\nMaking library of lipid masses...\n")
   ionisation_mode <- match.arg(ionisation_mode)
@@ -82,14 +99,14 @@ makelibrary <- function(ionisation_mode = c("positive","negative"),
 
       #' if sn2 or sn3 does not have FA bind 'empty' FA channel.
       if (FAnum == 1) {
-        s1 <- rbind(s1, sn2 <- vector(mode = "numeric", length = ncol(s1)), sn3 <- vector(mode = "numeric", length = ncol(s1)))
+        s1 <- rbind(s1, sn2 <- vector(mode = "numeric", length = ncol(s1)),
+                    sn3 <- vector(mode = "numeric", length = ncol(s1)))
         FAnum <- FAnum + 2
       }
       if (FAnum == 2) {
         s1 <- rbind(s1, sn3 <- vector(mode = "numeric", length = ncol(s1)))
         FAnum <- FAnum + 1
       }
-
 
       #' label the matrix
       if (FAnum == 3) row.names(s1) <- c("FA1", "FA2", "FA3")
@@ -101,17 +118,27 @@ makelibrary <- function(ionisation_mode = c("positive","negative"),
       s1 <- rbind(s1, formula)
       #' row.names(s1) <-c("FA1", "FA2","FA3", "massofFAs")
       for (i in 1:ncol(s1)) {
-
         #' for 3 FAs
         if (FAnum == 3) {
           FA_1 <- as.character((s1[1, i]))
           FA_2 <- as.character((s1[2, i]))
           FA_3 <- as.character((s1[3, i]))
-          s1["massofFAs", i] <- as.numeric((lookup_FA[FA_1, "FAmass"])) + as.numeric((lookup_FA[FA_2, "FAmass"])) + as.numeric((lookup_FA[FA_3, "FAmass"]))
+          s1["massofFAs", i] <-
+            as.numeric((lookup_FA[FA_1, "FAmass"])) +
+            as.numeric((lookup_FA[FA_2, "FAmass"])) +
+            as.numeric((lookup_FA[FA_3, "FAmass"]))
           #' determine the formula
-          temp_carbon <- as.numeric((lookup_FA[FA_1, "FAcarbon"])) + as.numeric((lookup_FA[FA_2, "FAcarbon"])) + as.numeric((lookup_FA[FA_3, "FAcarbon"]))
-          temp_doublebond <- as.numeric((lookup_FA[FA_1, "FAdoublebond"])) + as.numeric((lookup_FA[FA_2, "FAdoublebond"])) + as.numeric((lookup_FA[FA_3, "FAdoublebond"]))
-          s1["formula", i] <- paste(lipidclass, "(", temp_carbon, ":", temp_doublebond, ")", sep = "")
+          temp_carbon <-
+            as.numeric((lookup_FA[FA_1, "FAcarbon"])) +
+            as.numeric((lookup_FA[FA_2, "FAcarbon"])) +
+            as.numeric((lookup_FA[FA_3, "FAcarbon"]))
+          temp_doublebond <-
+            as.numeric((lookup_FA[FA_1, "FAdoublebond"])) +
+            as.numeric((lookup_FA[FA_2, "FAdoublebond"])) +
+            as.numeric((lookup_FA[FA_3, "FAdoublebond"]))
+
+          s1["formula", i] <- paste(lipidclass, "(", temp_carbon, ":",
+                                    temp_doublebond, ")", sep = "")
         }
       }
 
@@ -120,7 +147,11 @@ makelibrary <- function(ionisation_mode = c("positive","negative"),
       s1 <- rbind(s1, totalmass)
 
       for (i in 1:ncol(s1)) {
-        s1["totalmass", i] <- as.numeric(s1["massofFAs", i]) + as.numeric(as.character(lookup_lipid_class[lipidclass, "headgroup_mass"])) - (as.numeric(lookup_lipid_class[lipidclass, "FA_number"]) * as.numeric(lookup_element["H", "mass"]))
+        s1["totalmass", i] <-
+          as.numeric(s1["massofFAs", i]) +
+          as.numeric(as.character(lookup_lipid_class[lipidclass, "headgroup_mass"])) -
+          (as.numeric(lookup_lipid_class[lipidclass, "FA_number"]) *
+           as.numeric(lookup_element["H", "mass"]))
       }
 
       #' make rows for charged lipids masses
@@ -131,17 +162,32 @@ makelibrary <- function(ionisation_mode = c("positive","negative"),
       deprotonated <- vector(mode = "numeric", length = ncol(s1))
       chlorinated <- vector(mode = "numeric", length = ncol(s1))
       acetate <- vector(mode = "numeric", length = ncol(s1))
-      s1 <- rbind(s1, protonated, ammoniated, sodiated, potassiated, deprotonated, chlorinated, acetate)
+      s1 <- rbind(s1, protonated, ammoniated, sodiated, potassiated,
+                  deprotonated, chlorinated, acetate)
 
       #' calculate charged lipids masses
       for (i in 1:ncol(s1)) {
-        s1["protonated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["H", "mass"])), digits = 4)
-        s1["ammoniated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["NH4", "mass"])), digits = 4)
-        s1["sodiated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["Na", "mass"])), digits = 4)
-        s1["potassiated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["K", "mass"])), digits = 4)
-        s1["deprotonated", i] <- round((as.numeric(s1["totalmass", i]) - as.numeric(lookup_element["H", "mass"])), digits = 4)
-        s1["chlorinated", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["Cl", "mass"])), digits = 4)
-        s1["acetate", i] <- round((as.numeric(s1["totalmass", i]) + as.numeric(lookup_element["CH3COO", "mass"])), digits = 4)
+        s1["protonated", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["H", "mass"])), digits = 4)
+        s1["ammoniated", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["NH4", "mass"])), digits = 4)
+        s1["sodiated", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["Na", "mass"])), digits = 4)
+        s1["potassiated", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["K", "mass"])), digits = 4)
+        s1["deprotonated", i] <-
+          round((as.numeric(s1["totalmass", i]) -
+                 as.numeric(lookup_element["H", "mass"])), digits = 4)
+        s1["chlorinated", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["Cl", "mass"])), digits = 4)
+        s1["acetate", i] <-
+          round((as.numeric(s1["totalmass", i]) +
+                 as.numeric(lookup_element["CH3COO", "mass"])), digits = 4)
       }
 
       #' make rows for rounded charged lipids masses
@@ -152,17 +198,26 @@ makelibrary <- function(ionisation_mode = c("positive","negative"),
       round.deprotonated <- vector(mode = "numeric", length = ncol(s1))
       round.chlorinated <- vector(mode = "numeric", length = ncol(s1))
       round.acetate <- vector(mode = "numeric", length = ncol(s1))
-      s1 <- rbind(s1, round.protonated, round.ammoniated, round.sodiated, round.potassiated, round.deprotonated, round.chlorinated, round.acetate)
+      s1 <- rbind(s1, round.protonated, round.ammoniated, round.sodiated,
+                  round.potassiated, round.deprotonated, round.chlorinated,
+                  round.acetate)
 
       #' calculate rounded charged lipids masses
       for (i in 1:ncol(s1)) {
-        s1["round.protonated", i] <- round(as.numeric(s1["protonated", i]), digits = rounder)
-        s1["round.ammoniated", i] <- round(as.numeric(s1["ammoniated", i]), digits = rounder)
-        s1["round.sodiated", i] <- round(as.numeric(s1["sodiated", i]), digits = rounder)
-        s1["round.potassiated", i] <- round(as.numeric(s1["potassiated", i]), digits = rounder)
-        s1["round.deprotonated", i] <- round(as.numeric(s1["deprotonated", i]), digits = rounder)
-        s1["round.chlorinated", i] <- round(as.numeric(s1["chlorinated", i]), digits = rounder)
-        s1["round.acetate", i] <- round(as.numeric(s1["acetate", i]), digits = rounder)
+        s1["round.protonated", i] <-
+          round(as.numeric(s1["protonated", i]), digits = rounder)
+        s1["round.ammoniated", i] <-
+          round(as.numeric(s1["ammoniated", i]), digits = rounder)
+        s1["round.sodiated", i] <-
+          round(as.numeric(s1["sodiated", i]), digits = rounder)
+        s1["round.potassiated", i] <-
+          round(as.numeric(s1["potassiated", i]), digits = rounder)
+        s1["round.deprotonated", i] <-
+          round(as.numeric(s1["deprotonated", i]), digits = rounder)
+        s1["round.chlorinated", i] <-
+          round(as.numeric(s1["chlorinated", i]), digits = rounder)
+        s1["round.acetate", i] <-
+          round(as.numeric(s1["acetate", i]), digits = rounder)
       }
 
       library <- cbind(library, s1)
@@ -193,7 +248,13 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     search <- round((mass + C13_1), digits = 3)
     top <- search + offset
     bottom <- search - offset
-    result <- spectra[as.numeric(spectra[, "intensity"]) <= (intensity * prop.1) & spectra[, 1] >= bottom & spectra[, 1] <= top & spectra[, "isotope"] == "", ]
+
+    result <-
+      spectra[as.numeric(spectra[, "intensity"]) <= (intensity * prop.1) &
+              spectra[, 1] >= bottom &
+              spectra[, 1] <= top &
+              spectra[, "isotope"] == "", ]
+
     result <- rbind(result, blank1 = "", blank2 = "")
 
     if (no_isotopes == 2) {
@@ -201,21 +262,32 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
       search <- round((mass + C13_2), digits = 3)
       top <- search + offset
       bottom <- search - offset
-      result_2 <- spectra[as.numeric(spectra[, "intensity"]) <= (intensity * prop.2) & spectra[, 1] >= bottom & spectra[, 1] <= top & spectra[, "isotope"] == "", ]
+
+      result_2 <-
+        spectra[as.numeric(spectra[, "intensity"]) <= (intensity * prop.2) &
+                spectra[, 1] >= bottom &
+                spectra[, 1] <= top &
+                spectra[, "isotope"] == "", ]
+
       result_2 <- rbind(result_2, blank1 = "", blank2 = "")
     }
 
     if (nrow(result) > 2) {
       k <- k + 1
-      spectra[i, "isotope"] <- paste(spectra[i, "isotope"], " ", "[", k, "]", "[M]", sep = "")
+      spectra[i, "isotope"] <-
+        paste(spectra[i, "isotope"], " ", "[", k, "]", "[M]", sep = "")
       for (j in 1:(nrow(result) - 2)) {
         indices <- which(spectra == result[j, 1], arr.ind = TRUE)
-        spectra[indices[, "row"], "isotope"] <- paste(spectra[indices[, "row"], "isotope"], " ", "[", k, "]", "[M+1]", sep = "")
+        spectra[indices[, "row"], "isotope"] <-
+          paste(spectra[indices[, "row"], "isotope"], " ", "[", k, "]",
+                "[M+1]", sep = "")
       }
       if (no_isotopes == 2 && nrow(result_2) > 2) {
         for (j in 1:(nrow(result_2) - 2)) {
           indices <- which(spectra == result_2[j, 1], arr.ind = TRUE)
-          spectra[indices[, "row"], "isotope"] <- paste(spectra[indices[, "row"], "isotope"], " ", "[", k, "]", "[M+2]", sep = "")
+          spectra[indices[, "row"], "isotope"] <-
+            paste(spectra[indices[, "row"], "isotope"], " ", "[", k, "]",
+                  "[M+2]", sep = "")
         }
       }
     }
@@ -246,7 +318,6 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
 #' wl-21-05-2019, Tue: almost same as massPix
 #' wl-23-05-2019, Thu: Fix some bugs
 annotating <- function(ionisation_mode, deisotoped,
-                       #' adducts = c(H = T, NH4 = F, Na = T, K = F, dH = F, Cl = F, OAc = F),
                        ppm.annotate = 10, dbase) {
   cat("Starting annotation\n")
 
@@ -272,21 +343,21 @@ annotating <- function(ionisation_mode, deisotoped,
     offset <- (ppm.annotate * search) / 1000000
     top <- search + offset
     bottom <- search - offset
-    result <- which(s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top, 
+    result <- which(s1[sel.adducts, ] >= bottom & s1[sel.adducts, ] <= top,
                     arr.ind = TRUE)
 
     #' =========================
-    #' wl-23-05-2019, Thu: famous R problem: 
+    #' wl-23-05-2019, Thu: famous R problem:
     #' Error in if (condition)  : argument is of length zero
     #' =========================
-    #' if (nrow(result) > 0) {  
+    #' if (nrow(result) > 0) {
     if (length(result) > 0) {
       for (j in 1:nrow(result)) {
         col <- result[j, "col"]
         row <- result[j, "row"]
         row <- sel.adducts[row]
 
-        #' determine the adduct that was matched, summarising match 
+        #' determine the adduct that was matched, summarising match
         #' information from library for matched mass (as 'data')
         #' determine which adduct
         if (row == "14") {
@@ -318,7 +389,10 @@ annotating <- function(ionisation_mode, deisotoped,
           name.adduct <- "OAc"
         }
 
-        a.ppm <- round(abs(((as.numeric(spectra[i, 2]) - as.numeric(s1[adduct, col])) / as.numeric(spectra[i, 2])) * 1000000), digits = 1)
+        a.ppm <-
+          round(abs(((as.numeric(spectra[i, 2]) - as.numeric(s1[adduct, col])) /
+                     as.numeric(spectra[i, 2])) * 1000000),
+                digits = 1)
 
         #' make vector with summary of match and paired match
         data <- c(
@@ -360,12 +434,12 @@ annotating <- function(ionisation_mode, deisotoped,
     summary <- paste(length(annotations[annotations[, 2] != "", 2]), "from",
       length(as.vector(deisotoped$mz.obs)),
       "monoisotopic peaks were annoated (using accuract mass) with a",
-      ppm.annotate, "ppm tollerance",
+      ppm.annotate, "ppm tolerance",
       sep = " "
     )
     print(summary)
-
     return(annotations[, 2])
+
   } else { #' wl-23-05-2019, Thu: should give exit code.
     print("No annotations were made")
   }
@@ -380,131 +454,4 @@ norm_tic <- function(x, dim = 1) {
   scale <- apply(x, dim, function(x) sum(x, na.rm = T))
   scale <- scale/mean(scale, na.rm = T)
   x <- sweep(x, dim, scale, "/")
-}
-
-## ==== DEBUG: get peaklist using 'goupval' from 'xcms' ====
-
-if (F){
-  #' peakmat <- xcms::peaks(xset)
-  #' Note: two arguments in 'groupval', 'value' and 'intensity' will use this
-  #' matrix's intensity columns
-
-  grpmat <- groups(xset) #' object@groups  #' dim(grpmat)
-  #' values <- groupval(xset, method="medret", value="into")
-  if (T){  #' peak area
-    values <- groupval(xset, method = "maxint", value = "into", intensity = "maxo")
-  } else { #' peak height
-    values <- groupval(xset, method = "maxint", value = "maxo", intensity = "maxo")
-  }
-  #' wl-20-03-2018, Tue: it seems that only 'value' to decide the intensity to
-  #' be returned. For details, see source code of 'groupval'
-
-  peaklist <- data.frame(cbind(grpmat, values), row.names = NULL)
-  colnames(peaklist) <- gsub("mzmed", "mz", colnames(peaklist))
-  colnames(peaklist) <- gsub("rtmed", "rt", colnames(peaklist))
-} 
-
-## ==== DEBUG: peakTable from 'xcms' ====
-
-if (F) {
-  #' ------------------------------------------------------------------
-  #' wl-20-03-2018, Tue: Use 'peakTable' directly.
-  peaklist  <- peakTable(xset, method="maxint", value="into", intensity="maxo")
-
-  #' =====================================================================
-  #' wl-20-03-2018, Tue: Note that the dot arguments sgould be 'groupval'
-  setMethod("peakTable", "xcmsSet", function(object, filebase = character(), ...) {
-    if (length(sampnames(object)) == 1) {
-      return(object@peaks)
-    }
-
-    if (nrow(object@groups) < 1) {
-      stop("First argument must be an xcmsSet with group information or contain only one sample.")
-    }
-
-    groupmat <- groups(object)
-
-
-    if (!"value" %in% names(list(...))) {
-      ts <- data.frame(cbind(groupmat, groupval(object, value = "into", ...)), row.names = NULL)
-    } else {
-      ts <- data.frame(cbind(groupmat, groupval(object, ...)), row.names = NULL)
-    }
-
-    cnames <- colnames(ts)
-
-    if (cnames[1] == "mzmed") {
-      cnames[1] <- "mz"
-    } else {
-      stop("mzmed column missing")
-    }
-    if (cnames[4] == "rtmed") {
-      cnames[4] <- "rt"
-    } else {
-      stop("mzmed column missing")
-    }
-
-    colnames(ts) <- cnames
-
-    if (length(filebase)) {
-      write.table(ts, paste(filebase, ".tsv", sep = ""),
-        quote = FALSE,
-        sep = "\t", col.names = NA
-      )
-    }
-
-    ts
-  })
-}
-
-## ==== DEBUG: getPeaklist from 'CAMERA' ====
-
-if (F) {
-  #' ------------------------------------------------------------------
-  #' wl-15-05-2019, Wed: get peak list after annotation by CAMERA.
-  #' Note: need the original mzML files
-  library(CAMERA)
-  xsa         <- annotate(xset, cor_eic_th=0)
-  peaklist.1  <- getPeaklist(xsa)
-  #' or get peak list directly from CAMERA's hidden function
-  peaklist.2 <- CAMERA:::getPeaks_selection(xset)
-
-  #' =====================================================================
-  #' Create complete feature table from CAMERA
-  #' xs     - xcmsSet object
-  #' method - groupval parameter method
-  #' value  - groupval parameter method
-  getPeaks_selection <- function(xs, method = "medret", value = "into") {
-    if (!class(xs) == "xcmsSet") {
-      stop("Parameter xs is no xcmsSet object\n")
-    }
-
-    #' Testing if xcmsSet is grouped
-    if (nrow(xs@groups) > 0 && length(xs@filepaths) > 1) {
-      #' get grouping information
-      groupmat <- groups(xs)
-      #' generate data.frame for peaktable
-      ts <- data.frame(cbind(groupmat, groupval(xs, method = method, value = value)), row.names = NULL)
-      ## rename column names
-      cnames <- colnames(ts)
-      if (cnames[1] == "mzmed") {
-        cnames[1] <- "mz"
-      } else {
-        stop("Peak information ?!?")
-      }
-      if (cnames[4] == "rtmed") {
-        cnames[4] <- "rt"
-      } else {
-        stop("Peak information ?!?")
-      }
-      colnames(ts) <- cnames
-    } else if (length(sampnames(xs)) == 1) { # Contains only one sample?
-      ts <- xs@peaks
-    } else {
-      stop("First argument must be a xcmsSet with group information or contain only one sample.")
-    }
-
-    return(as.matrix(ts))
-  }
-
 }

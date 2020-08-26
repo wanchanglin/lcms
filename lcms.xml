@@ -22,15 +22,15 @@
             ln -sf ${file} ${file}.mzXML &&
           #else
             ln -sf ${file} ${file}.mzML &&
-          #end if  
+          #end if
         #end for
       #end if
 
       Rscript ${__tool_directory__}/lcms.R
-        --process '$process.process_selector'      
+        --process '$process.process_selector'
         #if $process.process_selector == "TRUE":
-          --mzxml_file '$process.mzxml_file' 
-          --samp_name '${','.join([a.name for a in $process.mzxml_file])}'  
+          --mzxml_file '$process.mzxml_file'
+          --samp_name '${','.join([a.name for a in $process.mzxml_file])}'
           --FWHM '$process.FWHM'
           --snthresh '$process.snthresh'
           --profmethod '$process.profmethod'
@@ -40,14 +40,14 @@
             --rdata_out '$rdata_out'
           #end if
         #else:
-          --xset_file '$process.xset_file' 
+          --xset_file '$process.xset_file'
         #end if
 
         ## Making library
         --ionisation_mode '$make_library.ionisation_mode'
         --fixed '$make_library.fixed'
         --fixed_FA '$make_library.fixed_FA'
-        
+
         ## deisotope
         --ppm '$deisotope.ppm'
         --no_isotope '$deisotope.no_isotope'
@@ -57,7 +57,7 @@
         ## annotate
         --ppm_annotate '$annotate.ppm_annotate'
 
-        ## save annotated peak 
+        ## save annotated peak
         --peak_out '$peak_out'
     ]]>
   </command>
@@ -76,9 +76,9 @@
 
       <when value="TRUE">
 
-        <param name="mzxml_file" type="data"  format="mzxml,mzml" multiple="true" 
+        <param name="mzxml_file" type="data"  format="mzxml,mzml" multiple="true"
               label="LC-MS data" optional="false"
-              help="At least two LC-MS data files (positive or negative mode) in mzXML 
+              help="At least two LC-MS data files (positive or negative mode) in mzXML
                     or mzML format." />
 
           <!-- parameter for function xcmsSet. findPeaks.matchedFilter is used. -->
@@ -88,7 +88,7 @@
 
           <param name="snthresh" type="float" value="5"
                 label="The signal to noise threshold"
-                help = "(snthresh) Defining the signal to noise cutoff to be used in 
+                help = "(snthresh) Defining the signal to noise cutoff to be used in
                         the chromatographic peak detection step" />
 
           <param name="profmethod" type="select"
@@ -106,8 +106,8 @@
                 help = "(minfrac) Minimum fraction of samples necessary for it to be a
                         valid peak group" />
 
-          <param name="rdata" type="boolean" 
-                  truevalue="TRUE" falsevalue="FALSE" checked="true" 
+          <param name="rdata" type="boolean"
+                  truevalue="TRUE" falsevalue="FALSE" checked="true"
                   label="Save xcms results?"
                   help="Save xcmsSet R file after runninbg xcms."/>
 
@@ -118,10 +118,10 @@
                label="xcmsSet R data"
                help="xcmsSet R data file produced by xcms" />
       </when>
-      
+
     </conditional>
 
-    <section name="make_library" title="Making library" > 
+    <section name="make_library" title="Making library" >
 
       <param name="ionisation_mode" type="select"
               label="Specify ionisation mode"
@@ -132,8 +132,8 @@
             <option value="negative">negative</option>
       </param>
 
-      <param name="fixed" type="boolean" 
-              truevalue="TRUE" falsevalue="FALSE" 
+      <param name="fixed" type="boolean"
+              truevalue="TRUE" falsevalue="FALSE"
               checked="false" label="SN position fixed or not"
               help="Defines if one of the SN positions is fixed, default
                     is false." />
@@ -145,7 +145,7 @@
 
     <section name="deisotope"
               title="Perform deisotoping on LC-MS data">
-      
+
       <param name="ppm" type="integer" value="5" label="Tolerance (ppm)"
               help="Tolerance (ppm) within which mass of isotope must
                     be within"/>
@@ -172,10 +172,10 @@
               label="Specify ppm threshold for annotation"
               help="Defines ppm threshold for which |observed m/z -
                     theoretical m/z| must be less than for annotation to be
-                    retained. Suggest to use same mass tolerance 
-                    as bin width." /> 
+                    retained. Suggest to use same mass tolerance
+                    as bin width." />
     </section>
-    
+
   </inputs>
 
   <!-- =============================================================== -->
@@ -183,10 +183,10 @@
     <data format="tabular" name="peak_out"
           label="Annotated peak table on ${on_string}">
     </data>
-    
+
     <data format="rdata" name="rdata_out"
           label="xcmsSet R results on ${on_string}">
-          <filter> 
+          <filter>
             ((
             process['process_selector'] == "TRUE" and
             process['rdata'] == True
@@ -199,50 +199,50 @@
   <!-- =============================================================== -->
   <tests>
     <test>
-      <param name="process_selector" value="TRUE" /> 
+      <param name="process_selector" value="TRUE" />
       <param name="mzxml_file" value="lcms_pos/ZH_190918_mann_liver_pos_001.mzML,lcms_pos/ZH_190918_mann_liver_pos_002.mzML" />
-      <param name="ionisation_mode" value="positive" /> 
-      <param name="FWHM" value="3" /> 
-      <param name="snthresh" value="5" /> 
+      <param name="ionisation_mode" value="positive" />
+      <param name="FWHM" value="3" />
+      <param name="snthresh" value="5" />
       <param name="profmethod" value="binlin" />
-      <param name="minfrac" value="0.25" /> 
-      <param name="rdata" value="TRUE" /> 
+      <param name="minfrac" value="0.25" />
+      <param name="rdata" value="TRUE" />
       <output name="peak_out" file="res/peak_pos.tsv" />
       <output name="rdata_out" file="res/xset_pos.rdata" compare="sim_size" delta="1000" />
     </test>
 
     <test>
-      <param name="process_selector" value="TRUE" /> 
+      <param name="process_selector" value="TRUE" />
       <param name="mzxml_file" value="lcms_neg/ZH_180918_mann_neg_001.mzML,lcms_neg/ZH_180918_mann_neg_002.mzML" />
-      <param name="ionisation_mode" value="negative" /> 
-      <param name="FWHM" value="3" /> 
-      <param name="snthresh" value="5" /> 
+      <param name="ionisation_mode" value="negative" />
+      <param name="FWHM" value="3" />
+      <param name="snthresh" value="5" />
       <param name="profmethod" value="binlin" />
-      <param name="minfrac" value="0.25" /> 
-      <param name="rdata" value="TRUE" /> 
+      <param name="minfrac" value="0.25" />
+      <param name="rdata" value="TRUE" />
       <output name="peak_out" file="res/peak_neg.tsv" />
       <output name="rdata_out" file="res/xset_neg.rdata" compare="sim_size" delta="1000" />
     </test>
 
     <test>
-      <param name="process_selector" value="FALSE" /> 
-      <param name="xset_file" value="res/xset_pos.rdata" /> 
-      <param name="ionisation_mode" value="positive" /> 
-      <param name="fixed" value="FALSE" /> 
-      <param name="fixed_FA" value="16" /> 
-      <param name="ppm" value="5" /> 
-      <param name="ppm_annotate" value="15" /> 
+      <param name="process_selector" value="FALSE" />
+      <param name="xset_file" value="res/xset_pos.rdata" />
+      <param name="ionisation_mode" value="positive" />
+      <param name="fixed" value="FALSE" />
+      <param name="fixed_FA" value="16" />
+      <param name="ppm" value="5" />
+      <param name="ppm_annotate" value="15" />
       <output name="peak_out" file="res/peak_pos.tsv" />
     </test>
 
     <test>
-      <param name="process_selector" value="FALSE" /> 
-      <param name="xset_file" value="res/xset_neg.rdata" /> 
-      <param name="ionisation_mode" value="negative" /> 
-      <param name="fixed" value="FALSE" /> 
-      <param name="fixed_FA" value="16" /> 
-      <param name="ppm" value="5" /> 
-      <param name="ppm_annotate" value="15" /> 
+      <param name="process_selector" value="FALSE" />
+      <param name="xset_file" value="res/xset_neg.rdata" />
+      <param name="ionisation_mode" value="negative" />
+      <param name="fixed" value="FALSE" />
+      <param name="fixed_FA" value="16" />
+      <param name="ppm" value="5" />
+      <param name="ppm_annotate" value="15" />
       <output name="peak_out" file="res/peak_neg.tsv" />
     </test>
   </tests>
@@ -257,13 +257,13 @@ LC-MS processing, deisotoping and annotating
 Description
 -----------
 
-This tool performs deisotyping and annotating of LC-MS data. 
+This tool performs deisotyping and annotating of LC-MS data.
 
 Inputs
 ------
 
 There are two input data formats, either ``mzML/mzXML`` or R data file for
-deisotyping and annotating analysis. 
+deisotyping and annotating analysis.
 
 **\1. LC-MS data with mzML/mzXML format**
 
@@ -286,7 +286,7 @@ user to choose are:
   "bin", "binlin" (default), "binlinbase" and "intlin". "bin" is better for centroid data, "binlin" for profile data.
 - ``minfrac``: minimum fraction (fefault: 0.25) of samples necessary in at
   least one of the sample groups for it to be a valid group.,
-   
+
 **\2. R data file**
 
 Already processed data can be loaded as ``xcmsSet`` object R data file, produced by the R package ``xcms``.
@@ -309,14 +309,14 @@ Annotated Peak Table
 The peak area is normalised by TIC and the annotated peak table is in
 tabular format:
 
-=================================== ========  ======= =========== =========== =========== 
+=================================== ========  ======= =========== =========== ===========
 annotated                           mz        rt      pos_001     pos_002     pos_003
-=================================== ========  ======= =========== =========== =========== 
+=================================== ========  ======= =========== =========== ===========
 [Cer(42:2)+H]                       648.6199  386.44  509476.1705 90147.43029 17059.58466
 [DG-H20(38:3)+Na][DG-H20(40:6)+H]   651.5342  389.92  89868.92836 76789.83982 40555.16262
 [Cer(40:5)+K]                       652.5009  56.93   1967715.965 1904828.953 132351.8552
 [DG-H20(40:5)+H]                    653.5499  396.17  88798.76816 68192.75595 10524.34529
-=================================== ========  ======= =========== =========== =========== 
+=================================== ========  ======= =========== =========== ===========
 
       |
 
@@ -327,15 +327,15 @@ xcmsSet R data file (OPTIONAL)
 
 
   </help>
-  
+
   <citations>
     <citation type="bibtex">
-    @misc{, 
-      title = {LC-MS Processing}, 
-      url = {https://github.com/hallz/lcms_processing_}, 
-      journal = {GitHub}, 
-      author = {hallz}, 
-      year = {2016}, 
+    @misc{,
+      title = {LC-MS Processing},
+      url = {https://github.com/hallz/lcms_processing_},
+      journal = {GitHub},
+      author = {hallz},
+      year = {2016},
       month={Feb}}
     }
     </citation>

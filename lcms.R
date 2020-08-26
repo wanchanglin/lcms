@@ -18,13 +18,14 @@
 #'    disable its plot.
 #'  - use average of all samples' intensity for deisotyping
 #' wl-30-05-2019, Thu: add 'samp_name' especially for galaxy
-#' wl-14-10-2019, Mon: fix a bug for planemo test only. 'planemo test' will 
+#' wl-14-10-2019, Mon: fix a bug for planemo test only. 'planemo test' will
 #'  put 'test-data' in an random directory. To avoid this, use 'samp_name'
 #'  directly in 'peaklist'.
+#' wl-26-08-2020, Wed: Review
 
 ## ==== General settings ====
 rm(list = ls(all = T))
-set.seed(123)
+#' set.seed(123)
 
 #' flag for command-line use or not. If false, only for debug interactively.
 com_f <- T
@@ -44,7 +45,6 @@ loc <- Sys.setlocale("LC_MESSAGES", "en_US.UTF-8")
 
 suppressPackageStartupMessages({
   library(optparse)
-  #' library(WriteXLS)
   library(xcms)
 })
 
@@ -115,12 +115,12 @@ if (com_f) {
       ),
       make_option("--profmethod",
         type = "character", default = "binlin",
-        help = "Use either 'bin' (better for centroid, default), or 
+        help = "Use either 'bin' (better for centroid, default), or
                 'binlin' (better for profile)"
       ),
       make_option("--minfrac",
         type = "double", default = 0.25,
-        help = "Minimum fraction of samples necessary for it to be 
+        help = "Minimum fraction of samples necessary for it to be
                 a valid peak group"
       ),
 
@@ -155,16 +155,16 @@ if (com_f) {
     args = commandArgs(trailingOnly = TRUE)
   )
 } else {
+  tool_dir <- "~/R_lwc/r_data/cam1/lcms/"
+  #' tool_dir <- "~/my_galaxy/lcms/"
   #' tool_dir <- "C:/R_lwc/lcms/" #' for windows
-  tool_dir <- "~/my_galaxy/lcms/" #' for linux. must be case-sensitive
   opt <- list(
     process = F,
 
     #' input files
     mzxml_file = paste(paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_001.mzML"),
                        paste0(tool_dir, "test-data/lcms_neg/ZH_180918_mann_neg_002.mzML"),
-                       sep = ","
-                       ),
+                       sep = ","),
 
     #' mzxml_file = paste0(tool_dir, "test-data/lcms_neg"),
     xset_file = paste0(tool_dir, "test-data/res/xset_neg.rdata"),
@@ -196,7 +196,7 @@ if (com_f) {
     rdata_out = paste0(tool_dir, "test-data/res/xset_neg.rdata")
   )
 }
-#' print(opt)
+print(opt)
 
 suppressPackageStartupMessages({
   source(paste0(tool_dir, "lcms_func.R"))
@@ -207,22 +207,25 @@ suppressPackageStartupMessages({
 #' library files
 lib_dir <- paste0(tool_dir, "libraries/")
 
-read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",", header = T)
+read <- read.csv(paste(lib_dir, "lib_FA.csv", sep = "/"), sep = ",",
+                 header = T)
 lookup_FA <- read[, 2:4]
 row.names(lookup_FA) <- read[, 1]
 
-read <- read.csv(paste(lib_dir, "lib_class.csv", sep = "/"), sep = ",", header = T)
+read <- read.csv(paste(lib_dir, "lib_class.csv", sep = "/"), sep = ",",
+                 header = T)
 lookup_lipid_class <- read[, 2:3]
 row.names(lookup_lipid_class) <- read[, 1]
 
-read <- read.csv(paste(lib_dir, "lib_element.csv", sep = "/"), sep = ",", header = T)
+read <- read.csv(paste(lib_dir, "lib_element.csv", sep = "/"), sep = ",",
+                 header = T)
 lookup_element <- read[, 2:3]
 row.names(lookup_element) <- read[, 1]
 
-read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"), sep = ",", header = T)
+read <- read.csv(paste(lib_dir, "lib_modification.csv", sep = "/"),
+                 sep = ",", header = T)
 lookup_mod <- read[, 2:ncol(read)]
 row.names(lookup_mod) <- read[, 1]
-
 
 ## ==== Main process ====
 
@@ -290,59 +293,43 @@ if (opt$process) {
   #' round mz and rt, and kepp them
   peaklist <- transform(peaklist, mz = round(mz, 4), rt = round(rt, 2))
   peaklist <- peaklist[,c("mz","rt",opt$samp_name)]
-  #' wl-14-10-2019, Mon: directory will be random in planemo test. 
+  #' wl-14-10-2019, Mon: directory will be random in planemo test.
   #' peaklist <- subset(peaklist, select = -c(mzmin, mzmax, rtmin, rtmax, npeaks))
   #' peaklist <- peaklist[, -3] #' remove mzml directory name
 
   if (opt$rdata) {
     save(xset, peaklist, file = opt$rdata_out)
-  } 
-  
+  }
+
 } else {
     load(opt$xset_file)
 }
 
-#' Deisotoping
-
+#' deisotoping
 #' wl-28-05-2019, Tue: Use average of all samples.
 #' mz and intensity of the 1st sample
 #' spectra <- as.matrix(peaklist[, c(1, 3)])
-#' spectra <- cbind(spectra, "", "")
-#' colnames(spectra) <- c("mz.obs", "intensity", "isotope", "modification")
+tmp <- round(apply(peaklist[, -c(1, 2)], 1, mean), digits = 3)
+spectra <- as.matrix(cbind(mz.obs = peaklist[, 1], intensity = tmp,
+                           isotope = "", modification = ""))
 
-tmp <- apply(peaklist[, -c(1, 2)], 1, mean)
-spectra <- as.matrix(cbind(
-  mz.obs = peaklist[, 1], intensity = tmp,
-  isotope = "", modification = ""
-))
-
-deisotoped <- deisotoping(
-  ppm = opt$ppm,
-  no_isotope = opt$no_isotope,
-  prop.1 = opt$prop_1,
-  prop.2 = opt$prop_2,
-  spectra = spectra
-)
-
-#' Annotating
+deisotoped <- deisotoping(ppm = opt$ppm, no_isotope = opt$no_isotope,
+                          prop.1 = opt$prop_1, prop.2 = opt$prop_2,
+                          spectra = spectra)
 
 #' make library
-dbase <- makelibrary(
-  ionisation_mode = opt$ionisation_mode,
-  fixed = opt$fixed,
-  fixed_FA = opt$fixed_FA,
-  lookup_lipid_class = lookup_lipid_class,
-  lookup_FA = lookup_FA,
-  lookup_element = lookup_element
-)
+dbase <- makelibrary(ionisation_mode = opt$ionisation_mode,
+                     fixed = opt$fixed,
+                     fixed_FA = opt$fixed_FA,
+                     lookup_lipid_class = lookup_lipid_class,
+                     lookup_FA = lookup_FA,
+                     lookup_element = lookup_element)
 
 #' annotating
-annotated <- annotating(
-  ionisation_mode = opt$ionisation_mode,
-  deisotoped = deisotoped,
-  ppm.annotate = opt$ppm_annotate,
-  dbase = dbase
-)
+annotated <- annotating(ionisation_mode = opt$ionisation_mode,
+                        deisotoped = deisotoped,
+                        ppm.annotate = opt$ppm_annotate,
+                        dbase = dbase)
 
 #' update and normalise peaklist
 indices <- match(deisotoped[, "mz.obs"], peaklist[, "mz"])
@@ -350,10 +337,11 @@ tmp <- peaklist[indices, ]
 rownames(tmp) <- NULL
 final_peak <- cbind(annotated, tmp)
 
-
 #' normalising based on TIC
 tmp <- norm_tic(final_peak[, -c(1:3)], dim = 2)
 final_peak <- cbind(final_peak[, 1:3], tmp)
 
 #' save results
 write.table(final_peak, file = opt$peak_out, sep = "\t", row.names = F)
+
+#' write.table(final_peak, file = "peak_neg.tsv", sep = "\t", row.names = F)

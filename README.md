@@ -4,16 +4,12 @@ Galaxy tool for LC-MS data deisotoping and annotation for metabolomics
 analysis.
 
 
-The original codes by Zoe Hall is located in 
-[lcms_processing](https://github.com/hallz/lcms_processing_). 
+The original codes by Zoe Hall is located in
+[lcms_processing](https://github.com/hallz/lcms_processing_).
 
 ## Installation ##
 
 - Install [Galaxy](https://github.com/galaxyproject/galaxy) under Linux.
-
-- Install [conda](https://docs.conda.io/en/latest/miniconda.html) under
-  Linux. `conda` is used to install `requirements` of this tool, i.e. R
-  packages used: `optparse` and `xcms`.
 
 - Use `git` to clone this tool
 
@@ -28,13 +24,13 @@ The original codes by Zoe Hall is located in
   ```xml
   <?xml version='1.0' encoding='utf-8'?>
   <toolbox monitor="true">
-    
+
     <section id="getext" name="Get Data">
       <tool file="data_source/upload.xml" />
     </section>
-    
+
     <section id="MyTools" name="My Tools">
-      <tool file="/path/to/dimsp/lcms.xml" />
+      <tool file="/path/to/lcms/lcms.xml" />
     </section>
 
   </toolbox>
@@ -44,7 +40,7 @@ The original codes by Zoe Hall is located in
 
 ## Authors, contributors & contacts ##
 
-- Wanchang Lin (wl361@cam.ac.uk), University of Cambridge 
-- Zoe Hall (zlh22@cam.ac.uk), University of Cambridge 
-- Julian L Griffin (jlg40@cam.ac.uk), University of Cambridge 
+- Wanchang Lin (wl361@cam.ac.uk), University of Cambridge
+- Zoe Hall (zlh22@cam.ac.uk), University of Cambridge
+- Julian L Griffin (jlg40@cam.ac.uk), University of Cambridge
 

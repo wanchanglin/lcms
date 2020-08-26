@@ -1,8 +1,8 @@
 <macros>
   <xml name="requirements">
     <requirements>
-      <requirement type="package" version="1.6.4">r-optparse</requirement>
-      <requirement type="package" version="3.6.1">bioconductor-xcms</requirement>
+      <requirement type="package" version="1.6.6">r-optparse</requirement>
+      <requirement type="package" version="3.10.0">bioconductor-xcms</requirement>
     </requirements>
   </xml>
   <xml name="stdio">
