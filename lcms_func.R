@@ -244,7 +244,7 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     #' calculated values
     offset <- (ppm * mass) / 1000000
 
-    #' find isotope with ppm filter on isotpe
+    #' find isotope with ppm filter on isotope
     search <- round((mass + C13_1), digits = 3)
     top <- search + offset
     bottom <- search - offset
@@ -258,7 +258,7 @@ deisotoping <- function(ppm = 5, no_isotopes = 2, prop.1 = 0.9, prop.2 = 0.5,
     result <- rbind(result, blank1 = "", blank2 = "")
 
     if (no_isotopes == 2) {
-      #' find isotope with ppm filter on isotpe
+      #' find isotope with ppm filter on isotope
       search <- round((mass + C13_2), digits = 3)
       top <- search + offset
       bottom <- search - offset
@@ -433,7 +433,7 @@ annotating <- function(ionisation_mode, deisotoped,
 
     summary <- paste(length(annotations[annotations[, 2] != "", 2]), "from",
       length(as.vector(deisotoped$mz.obs)),
-      "monoisotopic peaks were annoated (using accuract mass) with a",
+      "monoisotopic peaks were annotated (using accurate mass) with a",
       ppm.annotate, "ppm tolerance",
       sep = " "
     )
@@ -452,6 +452,6 @@ annotating <- function(ionisation_mode, deisotoped,
 #'   dim - normalisation based on row (1) or column (2)
 norm_tic <- function(x, dim = 1) {
   scale <- apply(x, dim, function(x) sum(x, na.rm = T))
-  scale <- scale/mean(scale, na.rm = T)
+  scale <- scale / mean(scale, na.rm = T)
   x <- sweep(x, dim, scale, "/")
 }

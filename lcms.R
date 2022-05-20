@@ -8,7 +8,7 @@
 #' wl-17-05-2019, Fri: modification for Galaxy
 #' wl-21-05-2019, Tue: use 'makelibrary' from 'massPix'
 #' wl-22-05-2019, Wed:
-#'   - compare deisotpe and annotate with 'massPix'
+#'   - compare deisotoping and annotation with 'massPix'
 #'   - move adducts into annotate function
 #'   - run in interactive mode
 #' wl-23-05-2019, Thu: Fix some bugs.
@@ -48,7 +48,7 @@ suppressPackageStartupMessages({
   library(xcms)
 })
 
-#' wl-28-08-2018, Tue: Convert a string seperated by comma into character vector
+#' wl-28-08-2018, Tue: Convert a string separated by comma into character vector
 str_vec <- function(x) {
   x <- unlist(strsplit(x, ","))
   x <- gsub("^[ \t]+|[ \t]+$", "", x) #' trim white spaces
@@ -93,7 +93,7 @@ if (com_f) {
       #' input files
       make_option("--mzxml_file",
         type = "character",
-        help = "mzXML/mzML file directory or full file list seperated by comma"
+        help = "mzXML/mzML file directory or full file list separated by comma"
       ),
       make_option("--xset_file",
         type = "character",
@@ -232,7 +232,7 @@ row.names(lookup_mod) <- read[, 1]
 #' XCMS
 if (opt$process) {
 
-  #' process multiple input files seperated by comma
+  #' process multiple input files separated by comma
   #' wl-04-03-2019, Mon: add file directory option. Note that it is not for
   #' galaxy.
   if (dir.exists(opt$mzxml_file)) { ## file directory
